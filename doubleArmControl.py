@@ -1,13 +1,12 @@
 import numpy as np
 import numpy.linalg as npl
 
-from RobotArm import RobotArm1D
-from plottingTools import animateArm1D
+from RobotArm import RobotArm2D
 
 
 def main():
-	arm1 = RobotArm1D(np.sqrt(2)*5,np.pi/4, x0=0,y0=0)
-	arm2 = RobotArm1D(np.sqrt(2)*5,3*np.pi/4, x0=10,y0=0)
+	arm1 = RobotArm2D(np.sqrt(2)*5,np.pi/4, base=[0,0])
+	arm2 = RobotArm2D(np.sqrt(2)*5,3*np.pi/4, base=[10,0])
 
 	dt = 0.01
 	tf = 100
@@ -41,8 +40,6 @@ def main():
 
 	err = npl.norm(pos1-pos2,axis=0)/np.minimum(r1_arr,r2_arr)
 	print max(err)
-
-	# animateArm1D(r_arr,theta_arr)
 
 
 if __name__ == "__main__":

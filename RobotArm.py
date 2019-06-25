@@ -1,12 +1,18 @@
 import numpy as np
 import numpy.linalg as npl
 
-
-class RobotArm1D():
-	def __init__(self,r,theta,x0=0,y0=0):
+class RobotArm2D():
+	def __init__(self,r,theta,base=[0,0]):
+		"""
+		2D Robotic Arm
+		Arguments:
+			r: initial length of arm
+			theta: rotation angle (measured from counter-clockwise from x)
+			base: specifies where the base of the arm is attached
+		"""
 		self.r = r
 		self.theta = theta
-		self.base = np.array([x0,y0])
+		self.base = np.array(base)
 
 	def pos(self):
 		x = self.r*np.cos(self.theta) + self.base[0]

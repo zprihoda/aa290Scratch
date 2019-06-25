@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import numpy as np
 
-def animateArm1D(r_arr,theta_arr):
+def animateArm2D(r_arr,theta_arr):
 	fig, ax = plt.subplots()
 	ax.set(xlim=[0,50],ylim=[-25,25])
 
