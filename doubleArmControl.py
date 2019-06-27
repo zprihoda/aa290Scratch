@@ -23,7 +23,6 @@ def animateDoubleArm(arm1,arm2,pos_arr1,pos_arr2,skip=1):
 		arm2_line.set_xdata([base2[0],pos_arr2[0,skip*i]])
 		arm2_line.set_ydata([base2[1],pos_arr2[1,skip*i]])
 
-	# 10e3/(tf/dt)
 	anim = ani.FuncAnimation(fig, animate, interval=1.0, frames=np.arange(pos_arr1.shape[1]/skip))
 	plt.draw()
 	plt.show()
