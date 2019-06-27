@@ -9,8 +9,8 @@ def animateArm2D(r_arr,theta_arr):
 	ax.set(xlim=[0,50],ylim=[-25,25])
 
 	# initialize lines
-	arm_line = ax.plot([0,r_arr[0]*np.cos(theta_arr[0])], [0,r_arr[0]*np.sin(theta_arr[0])])[0]
-	end_line = ax.plot(r_arr[0]*np.cos(theta_arr[0]), r_arr[0]*np.sin(theta_arr[0]),'.')[0]
+	arm_line = ax.plot([0,r_arr[0]*np.cos(theta_arr[0])], [0,r_arr[0]*np.sin(theta_arr[0])],'b-')[0]
+	end_line = ax.plot(r_arr[0]*np.cos(theta_arr[0]), r_arr[0]*np.sin(theta_arr[0]),'b.')[0]
 
 	def animate(i):
 		x = r_arr[i]*np.cos(theta_arr[i])
