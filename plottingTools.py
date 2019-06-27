@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import numpy as np
 
+from matplotlib.patches import Circle
+
 def animateArm2D(r_arr,theta_arr):
 	fig, ax = plt.subplots()
 	ax.set(xlim=[0,50],ylim=[-25,25])
@@ -21,3 +23,19 @@ def animateArm2D(r_arr,theta_arr):
 	anim = ani.FuncAnimation(fig,animate,interval=5,frames=np.arange(len(r_arr)))
 	plt.draw()
 	plt.show()
+
+def plotGrid(grid,ax=None):
+	if ax is None:
+		fig, ax = plt.subplots()
+
+	for i in range(len(grid)):
+		row = grid[i,:]
+		for j in range(len(row)):
+			occ = row[j]
+			if occ == 1:
+				ax.plot(j,len(grid)-1-i,"kx")
+
+
+def plotCircle(pos,radius,ax):
+	circle = Circle(pos, radius, color='g', fill=False)
+	ax.add_artist(circle)
