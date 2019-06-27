@@ -8,7 +8,7 @@ def main():
 	arm1 = RobotArm2D(np.sqrt(2)*5,np.pi/4, base=[0,0])
 	arm2 = RobotArm2D(np.sqrt(2)*5,3*np.pi/4, base=[10,0])
 
-	dt = 0.01
+	dt = 0.1
 	tf = 100
 	t_arr = np.arange(0,tf+dt,dt)
 
@@ -24,10 +24,10 @@ def main():
 	theta2_arr[0] = arm2.theta
 
 	for i,t in enumerate(t_arr[0:-1]):
-		v_des = [np.sin(2*np.pi*t/tf), np.cos(2*np.pi*t/tf)]
+		v_des = 0.5*np.array([np.sin(2*np.pi*t/tf), np.cos(2*np.pi*t/tf)])
 
-		arm1.control(v_des,dt)
-		arm2.control(v_des,dt)
+		arm1.controlVel(v_des,dt)
+		arm2.controlVel(v_des,dt)
 
 		r1_arr[i+1] = arm1.r
 		theta1_arr[i+1] = arm1.theta

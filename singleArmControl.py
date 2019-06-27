@@ -19,7 +19,7 @@ def main():
 	for i,t in enumerate(t_arr[0:-1]):
 		v_des = [np.sin(2*np.pi*t/tf), np.cos(2*np.pi*t/tf)]
 
-		arm.control(v_des,dt)
+		arm.controlVel(v_des,dt)
 
 		r_arr[i+1] = arm.r
 		theta_arr[i+1] = arm.theta
