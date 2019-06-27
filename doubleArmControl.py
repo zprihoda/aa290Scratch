@@ -28,6 +28,7 @@ def animateDoubleArm(arm1,arm2,pos_arr1,pos_arr2,skip=1):
 	plt.draw()
 	plt.show()
 
+
 def main():
 	arm1 = RobotArm2D(10,0, base=[-10,0])
 	arm2 = RobotArm2D(10,np.pi, base=[10,0])
@@ -36,16 +37,11 @@ def main():
 	tf = 100
 	t_arr = np.arange(0,tf+dt,dt)
 
-	r1_arr = np.zeros(len(t_arr))
-	theta1_arr = np.zeros(len(t_arr))
+	pos1 = np.zeros([2,len(t_arr)])
+	pos2 = np.zeros([2,len(t_arr)])
 
-	r2_arr = np.zeros(len(t_arr))
-	theta2_arr = np.zeros(len(t_arr))
-
-	r1_arr[0] = arm1.r
-	theta1_arr[0] = arm1.theta
-	r2_arr[0] = arm2.r
-	theta2_arr[0] = arm2.theta
+	pos1[:,0] = arm1.getEndPos()
+	pos2[:,0] = arm2.getEndPos()
 
 	for i,t in enumerate(t_arr[0:-1]):
 		v_des = 0.5*np.array([np.cos(4*np.pi*t/tf), np.cos(2*np.pi*t/tf)])
@@ -53,17 +49,11 @@ def main():
 		arm1.controlVel(v_des,dt)
 		arm2.controlVel(v_des,dt)
 
-		r1_arr[i+1] = arm1.r
-		theta1_arr[i+1] = arm1.theta
+		pos1[:,i+1] = arm1.getEndPos()
+		pos2[:,i+1] = arm2.getEndPos()
 
-		r2_arr[i+1] = arm2.r
-		theta2_arr[i+1] = arm2.theta
-
-	pos1 = np.array([r1_arr*np.cos(theta1_arr)+arm1.base[0], r1_arr*np.sin(theta1_arr)+arm1.base[1]])
-	pos2 = np.array([r2_arr*np.cos(theta2_arr)+arm2.base[0], r2_arr*np.sin(theta2_arr)+arm2.base[1]])
-
-	err = npl.norm(pos1-pos2,axis=0)/np.minimum(r1_arr,r2_arr)
-	print max(err)
+	err = npl.norm(pos1-pos2,axis=0)
+	print "Maximum Error: {:.3g} m\n".format(max(err))
 
 	animateDoubleArm(arm1, arm2, pos1, pos2, skip=max(1,int(0.1/dt)))
 
