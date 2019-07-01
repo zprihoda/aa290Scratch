@@ -43,6 +43,8 @@ def main():
 	pos2[:,0] = arm2.getEndPos()
 
 	for i,t in enumerate(t_arr[0:-1]):
+
+		r_des = np.array([np.sin(4*np.pi*t/tf)/2, np.sin(2*np.pi*t/tf)])
 		v_des = 0.5*np.array([np.cos(4*np.pi*t/tf), np.cos(2*np.pi*t/tf)])
 
 		arm1.controlVel(v_des,dt)
@@ -51,8 +53,14 @@ def main():
 		pos1[:,i+1] = arm1.getEndPos()
 		pos2[:,i+1] = arm2.getEndPos()
 
+	# Plot Error
 	err = npl.norm(pos1-pos2,axis=0)
-	print "Maximum Error: {:.3g} m\n".format(max(err))
+	plt.figure()
+	plt.plot(err)
+	plt.xlabel('t')
+	plt.ylabel('err (m)')
+	plt.title('Relative Position Error of Arms')
+	plt.show()
 
 	animateDoubleArm(arm1, arm2, pos1, pos2, skip=max(1,int(0.1/dt)))
 
