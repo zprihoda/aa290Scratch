@@ -11,10 +11,30 @@ Universite Libre de Bruxelles Course Notes:
 Numerial Solution to Wave equation:
     http://www-users.math.umn.edu/~olver/num_/lnp.pdf
 
-TODO: How to handle state when we are extending
+
+----
+TODO
+----
+How to handle state when we are extending
     ie. while extending how does our state (x) change
     We may be able to linearly interpolate to find new state:
         x_new_pos = L/n * np.arange
+
+Implement controller to damp out oscillations
+
+Implement dynamics for bending
+
+Implement Dynamics class
+    Calculate instance variables once:
+        eg. Relation Matrix
+    Store structural properties
+    Get rid of these awful global varaibles
+    Cleanup inputs and outputs
+
+Implement ability to fix one of the ends
+    Need to look into how fixing an end affects our dynamics model
+
+
 """
 
 import numpy as np
@@ -44,7 +64,6 @@ def getRelationMatrix(n):
     tmp[0] = -1
     tmp[-1] = -1
     C = np.diag(tmp)
-
     C += np.diag([1]*(n-1),k=1)
     C += np.diag([1]*(n-1),k=-1)
 
