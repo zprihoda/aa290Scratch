@@ -2,7 +2,7 @@ import numpy as np
 
 BOOM_THICKNESS = 1e-3   # m
 BOOM_RADIUS = 1.5/100   # m
-BOOM_DENSITY = 1500     # kg/m^3
+BOOM_DENSITY = 1500.    # kg/m^3
 
 def getBoomInertia(l):
     """
