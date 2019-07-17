@@ -18,7 +18,7 @@ TODO
 How to handle state when we are extending
     ie. while extending how does our state (x) change
     We may be able to linearly interpolate to find new state:
-        x_new_pos = L/n * np.arange
+        x_new_pos = L/n * np.arange... (?)
 
 Implement controller to damp out oscillations
 
@@ -97,7 +97,10 @@ if __name__ == "__main__":
     x = np.zeros(2*n)
 
     # simulate
-    t_steps = 1000
+    tf = 0.1
+    t_steps = int(np.floor(tf/dt))
+    t_arr = np.linspace(0,tf,t_steps+1)
+
     M1 = np.zeros(t_steps)
     M2 = np.zeros(t_steps)
     M1[0] = 1e-3
@@ -113,7 +116,7 @@ if __name__ == "__main__":
 
     # plot stuff
     for i in range(n):
-        pl.plot(x_arr[i,:])
+        pl.plot(t_arr,x_arr[i,:])
     pl.legend(range(n))
     pl.title('Torsional Finite-Element Model')
     pl.show()
