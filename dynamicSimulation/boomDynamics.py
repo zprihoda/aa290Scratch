@@ -11,7 +11,6 @@ Universite Libre de Bruxelles Course Notes:
 Numerial Solution to Wave equation:
     http://www-users.math.umn.edu/~olver/num_/lnp.pdf
 
-
 ----
 TODO
 ----
@@ -33,23 +32,12 @@ Implement Dynamics class
 
 Implement ability to fix one of the ends
     Need to look into how fixing an end affects our dynamics model
-
-
 """
 
 import numpy as np
 from matplotlib import pyplot as pl
 
 import structuralProperties as structProp
-
-
-k = 1
-c = 0.001
-L = 1.
-n = 10
-I = structProp.getBoomInertia(L/n)[2,2]
-
-dt = 1e-4
 
 def getRelationMatrix(n):
     """
@@ -69,7 +57,7 @@ def getRelationMatrix(n):
 
     return C
 
-def simulateTorsion(M1,M2,x):
+def simulateTorsion(arm, M1, M2, dt):
     """
     Simulate torsional dynamics
 
@@ -78,45 +66,34 @@ def simulateTorsion(M1,M2,x):
         M1: Applied moment at start of boom
         M2: Applied moment at end of boom
     Output:
-        dx: change of state with respect to time
+        x_new: updated state
     """
 
-    C = getRelationMatrix(n)
+    # obtain properties from arm
+    n = arm.state.n
+    dl = arm.state.dl
+    I = structProp.getBoomInertia(dl)[2,2]     # moment of inertia
+    k = arm.structProps['k']
+    c = arm.structProps['c']
 
+    theta = arm.state.rot_z
+    theta_dot = arm.state.rate_z
+    X = np.append(theta, theta_dot)
+
+    # solve struct Dynamics problem
+    C = getRelationMatrix(n)
     A = np.vstack([np.hstack([np.zeros([n,n]), np.eye(n)]),
                    np.hstack([k/I*C, c/I*C])
                    ])
 
     u = np.hstack([np.zeros(n),M1/I,np.zeros(n-2),M2/I])
-    dx = np.dot(A,x) + u
-    return dx
+    dX = np.dot(A,X) + u
 
+    X_new = X + dX*dt
+    theta_new = X_new[0:n]
+    theta_dot_new = X_new[n:]
 
-if __name__ == "__main__":
+    arm.state.rot_z = theta_new
+    arm.state.rate_z = theta_dot_new
 
-    x = np.zeros(2*n)
-
-    # simulate
-    tf = 0.1
-    t_steps = int(np.floor(tf/dt))
-    t_arr = np.linspace(0,tf,t_steps+1)
-
-    M1 = np.zeros(t_steps)
-    M2 = np.zeros(t_steps)
-    M1[0] = 1e-3
-    M1[1] = -M1[0]
-
-    x_arr = np.zeros([len(x),t_steps+1])
-    x_arr[:,0] = x
-    for i in range(t_steps):
-        dx = simulateTorsion(M1[i],M2[i],x)
-
-        x = x + dx*dt
-        x_arr[:,i+1] = x
-
-    # plot stuff
-    for i in range(n):
-        pl.plot(t_arr,x_arr[i,:])
-    pl.legend(range(n))
-    pl.title('Torsional Finite-Element Model')
-    pl.show()
+    return arm
