@@ -4,6 +4,7 @@ import pylab as pl
 
 from control import controlStep
 from dynamics import dynamicsStep
+from measurement import simulateMeasurements
 
 
 def simulate(arm, traj, tf, dt, u_inj=None):
@@ -14,13 +15,17 @@ def simulate(arm, traj, tf, dt, u_inj=None):
     t_arr = np.linspace(0,tf,t_steps+1)
     for i,t in enumerate(t_arr):
 
+        y = simulateMeasurements(arm)
+        # mode = finiteStateMachine(y,wp)
+        mode = 'none'
+        # mode = 'damping'
         if i not in u_inj:
             wp = traj[:,i]
-            u = controlStep(arm,wp)
+            u = controlStep(y,wp,mode)
         else:
             u = u_inj[i]
-
         arm = dynamicsStep(arm,u,dt)
+
         state_list.append(copy.copy(arm.state))
 
     plotResults(state_list, t_arr)
@@ -34,11 +39,11 @@ def plotResults(state_list, t_arr):
     n = state_list[0].n
 
     fig,axes = pl.subplots(2,1,sharex=True)
-    for i in range(n):
-        axes[0].plot(t_arr, rot_z_arr[:,0])
-        axes[0].plot(t_arr, rot_z_arr[:,-1])
-        axes[1].plot(t_arr, rate_z_arr[:,0])
-        axes[1].plot(t_arr, rate_z_arr[:,-1])
+
+    axes[0].plot(t_arr, rot_z_arr[:,0])
+    axes[0].plot(t_arr, rot_z_arr[:,-1])
+    axes[1].plot(t_arr, rate_z_arr[:,0])
+    axes[1].plot(t_arr, rate_z_arr[:,-1])
 
     axes[0].legend(['start','end'])
     axes[0].set_title('Torsional Finite-Element Model')

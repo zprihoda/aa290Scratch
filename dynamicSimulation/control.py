@@ -1,23 +1,27 @@
 import numpy as np
 
-def controlStep(arm, waypoint):
+def controlStep(y, waypoint, mode):
     """
     arguments:
         arm : current arm object
         waypoint: desired state
+        mode: fsm mode
     outputs:
         u   : control vector
     """
 
 
     # damping controllers
-    y_rot = [arm.state.rot_z[0],arm.state.rot_z[-1], arm.state.rate_z[0], arm.state.rate_z[-1]]       # we know the rotation angle and rate at the start and end of the boom
-    u_torsion_damping = torsionDampingControl(y_rot)
+
     # TODO: include other controllers
     # TODO: build total u vector
 
-    # u =  [0,0]
-    u = u_torsion_damping
+    if mode == 'none':
+        u =  [0,0]
+    elif mode == 'damping':
+        y_rot = y['rot']
+        u_torsion_damping = torsionDampingControl(y_rot)
+        u = u_torsion_damping
 
     return u
 
