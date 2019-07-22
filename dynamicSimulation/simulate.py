@@ -16,14 +16,17 @@ def simulate(arm, traj, tf, dt, u_inj=None):
     for i,t in enumerate(t_arr):
 
         y = simulateMeasurements(arm)
+
         # mode = finiteStateMachine(y,wp)
-        mode = 'none'
-        # mode = 'damping'
+        # mode = 'none'
+        mode = 'damping'
+
         if i not in u_inj:
             wp = traj[:,i]
             u = controlStep(y,wp,mode)
         else:
             u = u_inj[i]
+
         arm = dynamicsStep(arm,u,dt)
 
         state_list.append(copy.copy(arm.state))

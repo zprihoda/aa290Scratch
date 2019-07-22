@@ -10,8 +10,8 @@ class Arm():
         self.state = ArmState(num_fe,r)
 
         self.structProps = {}
-        self.structProps['k'] = 1
-        self.structProps['c'] = 0.001
+        self.structProps['k_rot'] = 1
+        self.structProps['c_rot'] = 0.001
 
 class ArmState():
     def __init__(self,n,r):

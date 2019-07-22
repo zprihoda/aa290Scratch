@@ -112,8 +112,8 @@ def simulateTorsion(arm, M1, M2, dt):
     n = arm.state.n
     dl = arm.state.dl
     I = structProp.getBoomInertia(dl)[2,2]     # moment of inertia
-    k = arm.structProps['k']
-    c = arm.structProps['c']
+    k = arm.structProps['k_rot']
+    c = arm.structProps['c_rot']
 
     theta = arm.state.rot_z
     theta_dot = arm.state.rate_z
