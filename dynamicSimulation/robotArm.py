@@ -10,8 +10,15 @@ class Arm():
         self.state = ArmState(num_fe,r)
 
         self.structProps = {}
-        self.structProps['k_rot'] = 1
-        self.structProps['c_rot'] = 0.001
+
+        ## estimated from papers
+        self.structProps['k_rot'] = 40./1000    # N*m/rad
+        self.structProps['c_rot'] = 0.01*self.structProps['k_rot']
+
+        ## normalized for testing
+        # self.structProps['k_rot'] = 1
+        # self.structProps['c_rot'] = 0.0001
+
 
 class ArmState():
     def __init__(self,n,r):

@@ -63,7 +63,6 @@ def dynamicsStep(arm, u, dt):
     # Torsion simulation
     arm = simulateTorsion(arm, M1, M2, dt)
 
-
     # Bending Simulation
     # TODO: Implement
 
@@ -75,7 +74,6 @@ def dynamicsStep(arm, u, dt):
     # arm.state = simulateExtension(arm.state, Fz)    # NOTE: simulate extension also remaps all other states to the new finite element model
 
     return arm
-
 
 
 def getRelationMatrix(n):
@@ -136,3 +134,31 @@ def simulateTorsion(arm, M1, M2, dt):
     arm.state.rate_z = theta_dot_new
 
     return arm
+
+
+if __name__ == "__main__":
+    # simple test
+    from robotArm import Arm
+    import copy
+
+    arm = Arm(1,np.zeros(6))
+
+    # simulate
+    tf = 1.0
+    dt = 1e-5
+
+    t_arr = np.arange(0,tf,dt)
+    u_arr = np.zeros([2,len(t_arr)])
+
+    # apply an impulse (positive then negative)
+    u_arr[0,0] = 1e-6
+    u_arr[0,1] = -1e-6
+
+    state_list = []
+    for i,t in enumerate(t_arr):
+        u = u_arr[:,i]
+        arm = dynamicsStep(arm,u,dt)
+        state_list.append(copy.copy(arm.state))
+
+    import simulate
+    simulate.plotResults(state_list,t_arr)
