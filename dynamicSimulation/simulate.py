@@ -26,8 +26,8 @@ def simulate(arm, traj, tf, dt, u_inj=None):
         y = simulateMeasurements(arm)
 
         # mode = finiteStateMachine(y,wp)
-        # mode = 'none'
-        mode = 'damping'
+        mode = 'none'
+        # mode = 'damping'
 
         if i not in u_inj:
             wp = traj[:,i]
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # simulate
     tf = 1.0
 
-    dt = 1e-5
+    dt = 1e-3
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
 

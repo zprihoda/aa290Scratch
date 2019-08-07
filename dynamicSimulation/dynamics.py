@@ -25,7 +25,6 @@ Implement Dynamics class
     Calculate instance variables once:
         eg. Relation Matrix
     Store structural properties
-    Get rid of these awful global varaibles
     Cleanup inputs and outputs
 
 Implement ability to fix one of the ends
@@ -33,6 +32,8 @@ Implement ability to fix one of the ends
 """
 
 import numpy as np
+import numpy.linalg as npl
+import scipy.linalg as spl
 import structuralProperties as structProp
 
 
@@ -122,11 +123,25 @@ def simulateTorsion(arm, M1, M2, dt):
     A = np.vstack([np.hstack([np.zeros([n,n]), np.eye(n)]),
                    np.hstack([k/I*C, c/I*C])
                    ])
+    B = np.vstack([np.zeros([n,2]),
+                   np.array([1/I,0]),
+                   np.zeros([n-2,2]),
+                   np.array([0,1/I])
+                   ])
 
-    u = np.hstack([np.zeros(n),M1/I,np.zeros(n-2),M2/I])
-    dX = np.dot(A,X) + u
+    # discretize dynamics
+    A_d = spl.expm(A*dt)
 
-    X_new = X + dX*dt
+    t_arr = np.linspace(0,1,10)*dt
+    y_arr = np.array([spl.expm(t*A) for t in t_arr])
+
+    tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+    B_d = np.dot(tmp,B)
+
+    # Update step
+    u = np.array([M1,M2])
+    X_new = np.dot(A_d,X) + np.dot(B_d,u)
+
     theta_new = X_new[0:n]
     theta_dot_new = X_new[n:]
 
@@ -145,7 +160,7 @@ if __name__ == "__main__":
 
     # simulate
     tf = 1.0
-    dt = 1e-4
+    dt = 1e-3
 
     t_arr = np.arange(0,tf,dt)
     u_arr = np.zeros([2,len(t_arr)])
