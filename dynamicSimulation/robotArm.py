@@ -49,4 +49,4 @@ class ArmState():
 
 if __name__ == "__main__":
     arm = Arm(1,np.zeros(6))
-    print arm.state.pos_z
+    print(arm.state.pos_z)
