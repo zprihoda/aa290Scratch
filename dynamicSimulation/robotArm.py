@@ -13,7 +13,7 @@ class Arm():
 
         ## estimated from papers
         self.structProps['k_rot'] = 40./1000    # N*m/rad
-        self.structProps['c_rot'] = 0.01*self.structProps['k_rot']
+        self.structProps['c_rot'] = 0.0005*self.structProps['k_rot']
 
         ## normalized for testing
         # self.structProps['k_rot'] = 1

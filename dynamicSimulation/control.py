@@ -22,11 +22,10 @@ def controlStep(y, waypoint, mode):
         y_rot = y['rot']
 
         r = y['r']
-        I = structProp.getBoomInertia(r)
+        I = structProp.getBoomInertia(r)[2,2]
 
         ddtheta = torsionDampingControl(y_rot)
         M = I*ddtheta
-
         u = M   # assume we are commanding the moment
 
     return u
@@ -41,7 +40,7 @@ def torsionDampingControl(y):
     Outputs:
         u: ddtheta (d^2(theta)/dt^2
     """
-    g = 1e-3
+    g = 10.0
 
     w1 = y[2]
     w2 = y[3]

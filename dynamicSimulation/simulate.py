@@ -5,9 +5,17 @@ import pylab as pl
 from control import controlStep
 from dynamics import dynamicsStep
 from measurement import simulateMeasurements
-
+import structuralProperties as structProp
 
 def simulate(arm, traj, tf, dt, u_inj=None):
+    """
+    Inputs:
+        arm: arm object
+        traj: desired trajectory
+        tf: desired final simulation time
+        dt: desired dt for control
+        u_inj: control injection
+    """
 
     state_list = []
 
@@ -27,6 +35,8 @@ def simulate(arm, traj, tf, dt, u_inj=None):
         else:
             u = u_inj[i]
 
+        # u[0] = np.sin( 2*(t/tf) * 2*np.pi)*structProp.getBoomInertia(arm.r)[2,2]
+
         arm = dynamicsStep(arm,u,dt)
 
         state_list.append(copy.copy(arm.state))
@@ -42,18 +52,26 @@ def plotResults(state_list, t_arr):
     n = state_list[0].n
 
     fig,axes = pl.subplots(2,1,sharex=True)
-
     axes[0].plot(t_arr, rot_z_arr[:,0])
     axes[0].plot(t_arr, rot_z_arr[:,-1])
-    axes[1].plot(t_arr, rate_z_arr[:,0])
-    axes[1].plot(t_arr, rate_z_arr[:,-1])
-
+    axes[1].plot(t_arr, rate_z_arr[:,0] - rate_z_arr[:,-1])
     axes[0].legend(['start','end'])
     axes[0].set_title('Torsional Finite-Element Model')
     axes[0].set_ylabel(r'$\theta$')
-    axes[1].set_ylabel(r'$\dot{\theta}$')
+    axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
     axes[1].set_xlabel('t')
     pl.tight_layout()
+
+    # fig,axes = pl.subplots(2,1,sharex=True)
+    # for i in range(n):
+        # axes[0].plot(t_arr, rot_z_arr[:,i])
+        # axes[1].plot(t_arr, rate_z_arr[:,i])
+    # axes[0].set_title('Torsional Finite-Element Model')
+    # axes[0].set_ylabel(r'$\theta$')
+    # axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
+    # axes[1].set_xlabel('t')
+    # pl.tight_layout()
+
     pl.show()
 
 if __name__ == "__main__":
@@ -62,15 +80,15 @@ if __name__ == "__main__":
     arm = Arm(1,np.zeros(6))
 
     # simulate
-    tf = 0.1
-    dt = 1e-4
+    tf = 1.0
+
+    dt = 1e-5
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
 
     traj = np.zeros([2,len(t_arr)])
 
-    u_inj = {}
-    u_inj[0] = np.array([1e-2, 0])
-    u_inj[1] = -u_inj[0]
+    u_inj = {0:  [1e-6,0],
+             1: [-1e-6,0]}
 
     simulate(arm, traj, tf, dt, u_inj=u_inj)
