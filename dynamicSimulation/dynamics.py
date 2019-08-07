@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     # simulate
     tf = 1.0
-    dt = 1e-5
+    dt = 1e-4
 
     t_arr = np.arange(0,tf,dt)
     u_arr = np.zeros([2,len(t_arr)])
