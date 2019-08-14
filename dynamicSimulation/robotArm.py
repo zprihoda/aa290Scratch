@@ -7,32 +7,32 @@ References:
 1: http://www.its.caltech.edu/~sslab/PUBLICATIONS/LECLERC_Ultra_Thin_Composite_Deployable_Booms_Full.pdf
 """
 
+# density_GSM = 17.    # grams per square meter [1]
+density_GSM = 1700.    # grams per square meter (debugging value)
+r = 1.5/100
+t = 1e-3
 
 class Arm():
+    ##Class Variables
+    structProps = {}
+    structProps['k_rot'] = 40./1000    # N*m/rad
+    structProps['c_rot'] = 0.0005*structProps['k_rot']
+
+    structProps['k_lat'] = 350.    # N/m
+    structProps['c_lat'] = 0.0005*structProps['k_lat']
+
+    structProps['density'] = density_GSM/1000 / t  # kg/m^3
+    structProps['radius'] = r
+    structProps['thickness'] = t
+
+
     def __init__(self, r, theta_arr, num_fe=None):
-        self.r = r
+        self.r = float(r)
         self.theta_arr = theta_arr
 
         if num_fe is None:
             num_fe = int(round(r*10))
         self.state = ArmState(num_fe,r)
-
-        self.structProps = {}
-
-        ## estimated from papers
-        self.structProps['k_rot'] = 40./1000    # N*m/rad
-        self.structProps['c_rot'] = 0.0005*self.structProps['k_rot']
-
-        self.structProps['k_lat'] = 350.    # N/m
-        self.structProps['c_lat'] = 0.0005*self.structProps['k_lat']
-
-        # density_GSM = 17.    # grams per square meter [1]
-        density_GSM = 1700.    # grams per square meter (debugging value)
-        r = 1.5/100
-        t = 1e-3
-        self.structProps['density'] = density_GSM/1000 / t  # kg/m^3
-        self.structProps['radius'] = r
-        self.structProps['thickness'] = t
 
 
 class ArmState():

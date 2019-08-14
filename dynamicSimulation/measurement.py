@@ -9,8 +9,9 @@ def simulateMeasurements(arm):
     """
     y = {}
 
-    y['rot'] = [arm.state.rot_z[0],arm.state.rot_z[-1],
-                arm.state.rate_z[0], arm.state.rate_z[-1]]     # we know the rotation angle and rate at the start and end of the boom
+    y['rot_z'] = arm.state.rot_z
+    y['rate_z'] = arm.state.rate_z
+
     y['r'] = arm.r
 
     return y

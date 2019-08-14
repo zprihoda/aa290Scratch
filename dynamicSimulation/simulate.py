@@ -22,23 +22,20 @@ def simulate(arm, traj, tf, dt, u_inj=None):
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
     for i,t in enumerate(t_arr):
-
         y = simulateMeasurements(arm)
 
         # mode = finiteStateMachine(y,wp)
-        mode = 'none'
+        # mode = 'none'
         # mode = 'damping'
+        mode = 'mpc'
 
         if i not in u_inj:
             wp = traj[:,i]
-            u = controlStep(y,wp,mode)
+            u = controlStep(y,wp,mode,dt)
         else:
             u = u_inj[i]
 
-        # u[0] = np.sin( 2*(t/tf) * 2*np.pi)*structProp.getBoomInertia(arm.r)[2,2]
-
         arm = dynamicsStep(arm,u,dt)
-
         state_list.append(copy.copy(arm.state))
 
     plotResults(state_list, t_arr)
@@ -82,7 +79,7 @@ if __name__ == "__main__":
     # simulate
     tf = 1.0
 
-    dt = 1e-3
+    dt = 1e-2
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
 
