@@ -23,6 +23,7 @@ def simulate(arm, traj, tf, dt, u_inj=None):
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
     for i,t in enumerate(t_arr):
+        print('Progress: {:.2f}%'.format(float(i)/(len(t_arr)-1) * 100), end = '\r')
         y = simulateMeasurements(arm)
 
         # mode = finiteStateMachine(y,wp)
@@ -58,14 +59,16 @@ def plotResults(state_list, control_list, t_arr):
     axes[0].legend(['start','end'])
     axes[0].set_title('Torsional Finite-Element Model')
     axes[0].set_ylabel(r'$\theta$')
+    axes[0].grid()
 
     axes[1].plot(t_arr, rate_z_arr[:,0] - rate_z_arr[:,-1])
-    axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
-
+    axes[1].set_ylabel(r'$\dot{\theta}_1 - \dot{\theta}_2$')
+    axes[1].grid()
 
     axes[2].plot(t_arr,control_arr)
     axes[2].set_ylabel('u')
     axes[2].set_xlabel('t')
+    axes[2].grid()
     pl.tight_layout()
 
     pl.show()
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     arm = Arm(r=1, theta_arr=np.zeros(6), num_fe=10)
 
     # simulate
-    tf = 1.0
+    tf = 2.0
 
     dt = 1e-2
     t_steps = int(np.floor(tf/dt))
@@ -84,7 +87,6 @@ if __name__ == "__main__":
 
     traj = np.zeros([2,len(t_arr)])
 
-    u_inj = {0:  [1e-6,0],
-             1: [-1e-6,0]}
+    u_inj = {0: [1e-3,0]}
 
     simulate(arm, traj, tf, dt, u_inj=u_inj)

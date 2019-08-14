@@ -71,7 +71,8 @@ def mpcController(y,dt):
 
     X0 = np.append(y['rot_z'], y['rate_z'])
     X_des = np.zeros(2*n)
-    T = 10  # time horizon
+    X_des[0:n] = np.pi
+    T = 100  # time horizon
 
     # solve cvx problem
     z = cp.Variable([2*n,T])
@@ -79,9 +80,9 @@ def mpcController(y,dt):
 
     g_d = 1     # damping
     g_c = 1     # control
-    g_f = 1     # final
+    g_f = 2     # final
 
-    u_max = 1
+    u_max = 1e-3
 
     J_d = cp.sum(cp.abs(z[n,:]-z[-1,:]))        # damping
     J_c = cp.sum(cp.abs(u))             # control
