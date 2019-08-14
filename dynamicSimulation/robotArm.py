@@ -1,5 +1,13 @@
 import numpy as np
 
+"""
+Robotic Arm Module
+
+References:
+1: http://www.its.caltech.edu/~sslab/PUBLICATIONS/LECLERC_Ultra_Thin_Composite_Deployable_Booms_Full.pdf
+"""
+
+
 class Arm():
     def __init__(self, r, theta_arr, num_fe=None):
         self.r = r
@@ -15,9 +23,16 @@ class Arm():
         self.structProps['k_rot'] = 40./1000    # N*m/rad
         self.structProps['c_rot'] = 0.0005*self.structProps['k_rot']
 
-        ## normalized for testing
-        # self.structProps['k_rot'] = 1
-        # self.structProps['c_rot'] = 0.0001
+        self.structProps['k_lat'] = 350.    # N/m
+        self.structProps['c_lat'] = 0.0005*self.structProps['k_lat']
+
+        # density_GSM = 17.    # grams per square meter [1]
+        density_GSM = 1700.    # grams per square meter (debugging value)
+        r = 1.5/100
+        t = 1e-3
+        self.structProps['density'] = density_GSM/1000 / t  # kg/m^3
+        self.structProps['radius'] = r
+        self.structProps['thickness'] = t
 
 
 class ArmState():

@@ -77,7 +77,7 @@ def plotResults(state_list, t_arr):
 if __name__ == "__main__":
     from robotArm import Arm
 
-    arm = Arm(1,np.zeros(6))
+    arm = Arm(r=1, theta_arr=np.zeros(6), num_fe=10)
 
     # simulate
     tf = 1.0

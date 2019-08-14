@@ -2,6 +2,9 @@
 -------------------
 Reference Material:
 -------------------
+
+Torsional:
+
 Reference equations on torsional and bending vibrations for beam elements:
     http://www.wind.civil.aau.dk/lecture/7sem/notes/Lecture9.pdf
 Duke Lectures on StructDyn
@@ -10,6 +13,13 @@ Universite Libre de Bruxelles Course Notes:
     https://scmero.ulb.ac.be/Teaching/Courses/MECA-H-303/MECA-H-303-Lectures.pdf
 Numerial Solution to Wave equation:
     http://www-users.math.umn.edu/~olver/num_/lnp.pdf
+
+Bending / General FE methods:
+
+http://www.solid.iei.liu.se/Education/TMHL08/Lectures/Lecture__8.pdf
+http://homepages.cae.wisc.edu/~suresh/ME964Website/M964Notes/Notes/introfem.pdf
+DYNAMIC FINITE ELEMENT METHODS - Lecture notes for SD2450 - Biomechanics and Neuronics
+
 
 ----
 TODO
@@ -95,30 +105,7 @@ def getRelationMatrix(n):
 
     return C
 
-def simulateTorsion(arm, M1, M2, dt):
-    """
-    Simulate torsional dynamics
-
-    Arguments:
-        x: state [theta_1 ... theta_n, theta_dot_1 ... theta_dot_n]
-        M1: Applied moment at start of boom
-        M2: Applied moment at end of boom
-    Output:
-        x_new: updated state
-    """
-
-    # obtain properties from arm
-    n = arm.state.n
-    dl = arm.state.dl
-    I = structProp.getBoomInertia(dl)[2,2]     # moment of inertia
-    k = arm.structProps['k_rot']
-    c = arm.structProps['c_rot']
-
-    theta = arm.state.rot_z
-    theta_dot = arm.state.rate_z
-    X = np.append(theta, theta_dot)
-
-    # solve struct Dynamics problem
+def getABMatrices(n, k, c, I, dt):
     C = getRelationMatrix(n)
     A = np.vstack([np.hstack([np.zeros([n,n]), np.eye(n)]),
                    np.hstack([k/I*C, c/I*C])
@@ -138,6 +125,38 @@ def simulateTorsion(arm, M1, M2, dt):
     tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
     B_d = np.dot(tmp,B)
 
+    return A_d, B_d
+
+def simulateTorsion(arm, M1, M2, dt):
+    """
+    Simulate torsional dynamics
+
+    Arguments:
+        x: state [theta_1 ... theta_n, theta_dot_1 ... theta_dot_n]
+        M1: Applied moment at start of boom
+        M2: Applied moment at end of boom
+    Output:
+        x_new: updated state
+    """
+
+    # obtain properties from arm
+    n = arm.state.n
+    dl = arm.state.dl
+    r = arm.structProps['radius']
+    rho = arm.structProps['density']
+    delta = arm.structProps['thickness']
+
+    I_fe = structProp.getBoomInertia(dl, r, delta, rho)[2,2]     # moment of inertia
+    k = arm.structProps['k_rot']
+    c = arm.structProps['c_rot']
+
+    theta = arm.state.rot_z
+    theta_dot = arm.state.rate_z
+    X = np.append(theta, theta_dot)
+
+    # get dynamics and control matrices
+    A_d, B_d = getABMatrices(n, k, c, I_fe, dt)
+
     # Update step
     u = np.array([M1,M2])
     X_new = np.dot(A_d,X) + np.dot(B_d,u)
@@ -149,6 +168,21 @@ def simulateTorsion(arm, M1, M2, dt):
     arm.state.rate_z = theta_dot_new
 
     return arm
+
+def simulateBending(arm, M1, M2, dt):
+    # TODO: Implement and test
+    raise NotImplementedError('Bending not Implemented yet')
+
+    # obtain properties from arm
+    n = arm.state.n
+    dl = arm.state.dl
+    I = structProp.getBoomInertia(dl)[0,0]     # moment of inertia
+    k = arm.structProps['k_lat']
+    c = arm.structProps['c_lat']
+
+    u = arm.state.lat_x
+    u_dot = arm.state.lat_dx
+    X = np.append(u, u_dot)
 
 
 if __name__ == "__main__":
