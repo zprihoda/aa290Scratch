@@ -18,6 +18,7 @@ def simulate(arm, traj, tf, dt, u_inj=None):
     """
 
     state_list = []
+    control_list = []
 
     t_steps = int(np.floor(tf/dt))
     t_arr = np.linspace(0,tf,t_steps+1)
@@ -36,38 +37,36 @@ def simulate(arm, traj, tf, dt, u_inj=None):
             u = u_inj[i]
 
         arm = dynamicsStep(arm,u,dt)
+
         state_list.append(copy.copy(arm.state))
+        control_list.append(u)
 
-    plotResults(state_list, t_arr)
+    plotResults(state_list, control_list, t_arr)
 
 
-def plotResults(state_list, t_arr):
+def plotResults(state_list, control_list, t_arr):
 
     rot_z_arr = np.array([state.rot_z for state in state_list])
     rate_z_arr = np.array([state.rate_z for state in state_list])
+    control_arr = np.array(control_list)
 
     n = state_list[0].n
 
-    fig,axes = pl.subplots(2,1,sharex=True)
+    fig,axes = pl.subplots(3,1,sharex=True)
     axes[0].plot(t_arr, rot_z_arr[:,0])
     axes[0].plot(t_arr, rot_z_arr[:,-1])
-    axes[1].plot(t_arr, rate_z_arr[:,0] - rate_z_arr[:,-1])
     axes[0].legend(['start','end'])
     axes[0].set_title('Torsional Finite-Element Model')
     axes[0].set_ylabel(r'$\theta$')
-    axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
-    axes[1].set_xlabel('t')
-    pl.tight_layout()
 
-    # fig,axes = pl.subplots(2,1,sharex=True)
-    # for i in range(n):
-        # axes[0].plot(t_arr, rot_z_arr[:,i])
-        # axes[1].plot(t_arr, rate_z_arr[:,i])
-    # axes[0].set_title('Torsional Finite-Element Model')
-    # axes[0].set_ylabel(r'$\theta$')
-    # axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
-    # axes[1].set_xlabel('t')
-    # pl.tight_layout()
+    axes[1].plot(t_arr, rate_z_arr[:,0] - rate_z_arr[:,-1])
+    axes[1].set_ylabel(r'$\dot{\theta_1} - \dot{\theta_2}$')
+
+
+    axes[2].plot(t_arr,control_arr)
+    axes[2].set_ylabel('u')
+    axes[2].set_xlabel('t')
+    pl.tight_layout()
 
     pl.show()
 
