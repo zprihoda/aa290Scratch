@@ -7,7 +7,7 @@ from dynamics import dynamicsStep
 from measurement import simulateMeasurements
 import structuralProperties as structProp
 
-def simulate(arm, traj, tf, dt, u_inj=None):
+def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
     """
     Inputs:
         arm: arm object
@@ -17,27 +17,35 @@ def simulate(arm, traj, tf, dt, u_inj=None):
         u_inj: control injection
     """
 
+    if dt_control is None:
+        dt_control = dt_dyn
+    else:
+        dt_control = max(np.floor(dt_control/dt_dyn)*dt_dyn, dt_dyn)
+    T = int(dt_control/dt_dyn)
+
     state_list = []
     control_list = []
 
-    t_steps = int(np.floor(tf/dt))
+    t_steps = int(np.floor(tf/dt_dyn))
     t_arr = np.linspace(0,tf,t_steps+1)
     for i,t in enumerate(t_arr):
-        print('Progress: {:.2f}%'.format(float(i)/(len(t_arr)-1) * 100), end = '\r')
-        y = simulateMeasurements(arm)
+        print('Progress: {:.2f}%'.format(float(i)/(len(t_arr)-1) * 100), end='\r')
 
         # mode = finiteStateMachine(y,wp)
         # mode = 'none'
         # mode = 'damping'
         mode = 'mpc'
 
-        if i not in u_inj:
-            wp = traj[:,i]
-            u = controlStep(y,wp,mode,dt)
-        else:
-            u = u_inj[i]
+        if i%T == 0:
+            j = i//T
+            if j not in u_inj:
+                wp = traj[:,j]
+                y = simulateMeasurements(arm)
+                u = controlStep(y,wp,mode,dt_control)
+            else:
+                u = u_inj[j]
 
-        arm = dynamicsStep(arm,u,dt)
+        arm = dynamicsStep(arm,u,dt_dyn)
 
         state_list.append(copy.copy(arm.state))
         control_list.append(u)
@@ -81,12 +89,13 @@ if __name__ == "__main__":
     # simulate
     tf = 2.0
 
-    dt = 1e-2
-    t_steps = int(np.floor(tf/dt))
+    dt_dyn = 1e-2
+    dt_control = 1e-1
+    t_steps = int(np.floor(tf/dt_control))
     t_arr = np.linspace(0,tf,t_steps+1)
 
     traj = np.zeros([2,len(t_arr)])
 
     u_inj = {0: [1e-3,0]}
 
-    simulate(arm, traj, tf, dt, u_inj=u_inj)
+    simulate(arm, traj, tf, dt_dyn, dt_control=dt_control, u_inj=u_inj)
