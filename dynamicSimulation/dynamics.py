@@ -4,7 +4,6 @@ Reference Material:
 -------------------
 
 Torsional:
-
 Reference equations on torsional and bending vibrations for beam elements:
     http://www.wind.civil.aau.dk/lecture/7sem/notes/Lecture9.pdf
 Duke Lectures on StructDyn
@@ -15,11 +14,12 @@ Numerial Solution to Wave equation:
     http://www-users.math.umn.edu/~olver/num_/lnp.pdf
 
 Bending / General FE methods:
-
 http://www.solid.iei.liu.se/Education/TMHL08/Lectures/Lecture__8.pdf
 http://homepages.cae.wisc.edu/~suresh/ME964Website/M964Notes/Notes/introfem.pdf
 DYNAMIC FINITE ELEMENT METHODS - Lecture notes for SD2450 - Biomechanics and Neuronics
 
+Finite Element for Vibrations:
+http://www1.aucegypt.edu/faculty/mharafa/MENG%20475/Finite%20Element%20Vibration%20Analysis%20Fall%202010.pdf
 
 ----
 TODO
