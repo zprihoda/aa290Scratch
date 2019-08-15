@@ -46,8 +46,10 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import structuralProperties as structProp
 
+sigma_theta = 1e-3
+sigma_dtheta = 1e-3
 
-def dynamicsStep(arm, u, dt):
+def dynamicsStep(arm, u, dt, noise=False):
     """
     Main Dynamics Function called in simulation
 
@@ -58,6 +60,7 @@ def dynamicsStep(arm, u, dt):
             M1-M6 = Command moments for each rotational motor
             F_r = Force in radial direction
         dt  : time step
+        noise: boolean indicating whether to inject dynamic noise
     """
 
     # Determine Command Forces
@@ -72,7 +75,7 @@ def dynamicsStep(arm, u, dt):
     M2 = M2_cmd + M2_ext
 
     # Torsion simulation
-    arm = simulateTorsion(arm, M1, M2, dt)
+    arm = simulateTorsion(arm, M1, M2, dt, noise)
 
     # Bending Simulation
     # TODO: Implement
@@ -127,7 +130,7 @@ def getABMatrices(n, k, c, I, dt):
 
     return A_d, B_d
 
-def simulateTorsion(arm, M1, M2, dt):
+def simulateTorsion(arm, M1, M2, dt, noise):
     """
     Simulate torsional dynamics
 
@@ -163,6 +166,10 @@ def simulateTorsion(arm, M1, M2, dt):
 
     theta_new = X_new[0:n]
     theta_dot_new = X_new[n:]
+
+    if noise:
+        theta_new += sigma_theta*np.random.randn(n)
+        theta_dot_new += sigma_dtheta*np.random.randn(n)
 
     arm.state.rot_z = theta_new
     arm.state.rate_z = theta_dot_new
