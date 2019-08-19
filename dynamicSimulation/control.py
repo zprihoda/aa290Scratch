@@ -13,12 +13,6 @@ import cvxpy as cp
 
 from robotArm import Arm
 
-K_ROT = Arm.structProps['k_rot']
-C_ROT = Arm.structProps['c_rot']
-BOOM_THICKNESS = Arm.structProps['thickness']
-BOOM_RADIUS = Arm.structProps['radius']
-BOOM_DENSITY = Arm.structProps['density']
-
 def controlStep(y, waypoint, mode, dt):
     """
     arguments:
@@ -26,14 +20,16 @@ def controlStep(y, waypoint, mode, dt):
         waypoint: desired state
         mode: fsm mode
     outputs:
-        u   : control vector
+        u   : control dictionary
     """
 
     # TODO: include other controllers
     # TODO: build total u vector
 
+    u = {}
+
     if mode == 'none':
-        u =  [0,0]
+        u['rot'] =  [0,0]
     elif mode == 'damping':
         y_rot = y['rot_z']
 
@@ -42,10 +38,10 @@ def controlStep(y, waypoint, mode, dt):
 
         ddtheta = torsionDampingControl(y_rot)
         M = I*ddtheta
-        u = M   # assume we are commanding the moment
+        u['rot'] = M   # assume we are commanding the moment
 
     elif mode == 'mpc':
-        u = mpcController(y,dt)
+        u['rot'] = mpcController(y,dt)
 
     return u
 
@@ -70,12 +66,20 @@ def torsionDampingControl(y):
 
 
 def mpcController(y,dt):
+
     n = len(y['rot_z'])
     dl = y['r']/n
-    I_fe = structProp.getBoomInertia(dl, BOOM_RADIUS, BOOM_THICKNESS, BOOM_DENSITY)[2,2]
 
-    A,B = dynamics.getABMatrices(n, K_ROT, C_ROT, I_fe, dt)
+    # generate temporary arm object to get structural properties from
+    # TODO: Fix up this architecture
+    #   controller shouldn't need to generate an arm.
+    #   Structural properties should be stored elsewhere
+    arm = Arm(y['r'], y['rot_z'], num_fe=n)
+    k_rot = arm.structProps['k_rot']
 
+    A,B = dynamics.getABTorsion(arm, dt)
+
+    ## setup optimal control problem
     X0 = np.append(y['rot_z'], y['rate_z'])
     X_des = np.zeros(2*n)
     X_des[0:n] = np.pi
@@ -90,7 +94,7 @@ def mpcController(y,dt):
     g_f = 2     # final
 
     u_max = 1e-3    # max control
-    T_max = 1e-1       # max torsion
+    T_max = 100       # max torsion
 
     J_d = cp.sum(cp.abs(z[n,:]-z[-1,:]))        # damping
     J_c = cp.sum(cp.abs(u))                     # control
@@ -101,12 +105,15 @@ def mpcController(y,dt):
     constr += [z[:,0] == X0]                    # initial condition
     constr += [z[:,1:] == A@z[:,:-1] + B@u]     # FE dynamics
     constr += [cp.abs(u) <= u_max]              # control limits
-    constr += [cp.abs(z[0:n-1,:] - z[1:n,:])  <= T_max*dl/K_ROT] #torsional strength [1]
+    constr += [cp.abs(z[0:n-1,:] - z[1:n,:])  <= T_max*dl/k_rot] #torsional strength [1]
 
     prob = cp.Problem(obj, constr)
     try:
         result = prob.solve()
-        u_opt = u.value[:,0]
+        if prob.status == 'optimal':
+            u_opt = u.value[:,0]
+        else:
+            u_opt = [0,0]
     except cp.error.SolverError:
         print("Warning: cvx solver failed")
         # TODO: should be able to extract the best control from

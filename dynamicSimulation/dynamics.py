@@ -49,46 +49,6 @@ import structuralProperties as structProp
 sigma_theta = 1e-3
 sigma_dtheta = 1e-3
 
-def dynamicsStep(arm, u, dt, noise=False):
-    """
-    Main Dynamics Function called in simulation
-
-    Inputs:
-        arm: current robot arm object
-        u    : control commands
-            u = [M1, ... , M6, F_r]
-            M1-M6 = Command moments for each rotational motor
-            F_r = Force in radial direction
-        dt  : time step
-        noise: boolean indicating whether to inject dynamic noise
-    """
-
-    # Determine Command Forces
-    M1_cmd = u[0]
-    M2_cmd = u[1]
-
-    # TODO: Determine external forces
-    M1_ext = 0
-    M2_ext = 0
-
-    M1 = M1_cmd + M1_ext
-    M2 = M2_cmd + M2_ext
-
-    # Torsion simulation
-    arm = simulateTorsion(arm, M1, M2, dt, noise)
-
-    # Bending Simulation
-    # TODO: Implement
-
-    # Extension Simulation
-    # TODO: Implement
-    # F_cmd = u[-1]
-    # F_ext = 0   # TODO
-    # Fz = F_cmd + F_ext
-    # arm.state = simulateExtension(arm.state, Fz)    # NOTE: simulate extension also remaps all other states to the new finite element model
-
-    return arm
-
 
 def getTorsionMatrices(n,G,A,L,r,rho):
     dl = L/n
@@ -147,6 +107,7 @@ def getABTorsion(arm, dt):
     B_d = np.dot(tmp,B)
 
     return A_d, B_d
+
 
 def getDeflectionMatrices(n,E,A,L,r,rho):
     dl = L/n
@@ -301,6 +262,51 @@ def simulateBending(arm, F1, F2, M1, M2, dt, noise=None):
 
     arm.state.def_lat = delta_new
     arm.state.rate_lat = ddelta_new
+
+    return arm
+
+
+def dynamicsStep(arm, u, dt, noise=False):
+    """
+    Main Dynamics Function called in simulation
+
+    Inputs:
+        arm: current robot arm object
+        u    : control commands
+            u = [M1, ... , M6, F_r]
+            M1-M6 = Command moments for each rotational motor
+            F_r = Force in radial direction
+        dt  : time step
+        noise: boolean indicating whether to inject dynamic noise
+    """
+
+    # Torsion simulation
+    M1_cmd = u['rot'][0]
+    M2_cmd = u['rot'][1]
+
+    # TODO: Implement External forces
+    M1_ext = 0
+    M2_ext = 0
+
+    M1 = M1_cmd + M1_ext
+    M2 = M2_cmd + M2_ext
+
+    arm = simulateTorsion(arm, M1, M2, dt, noise)
+
+    # Bending Simulation
+    F1 = 0
+    M1 = 0
+    F2 = 0
+    M2 = 0
+
+    arm = simulateBending(arm, F1, F2, M1, M2, dt, noise)
+
+    # Extension Simulation
+    # TODO: Implement
+    # F_cmd = u[-1]
+    # F_ext = 0   # TODO
+    # Fz = F_cmd + F_ext
+    # arm.state = simulateExtension(arm.state, Fz)    # NOTE: simulate extension also remaps all other states to the new finite element model
 
     return arm
 

@@ -43,7 +43,8 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
                 y = simulateMeasurements(arm)
                 u = controlStep(y,wp,mode,dt_control)
             else:
-                u = u_inj[j]
+                u = {}
+                u['rot'] = u_inj[j]['rot']
 
         arm = dynamicsStep(arm,u,dt_dyn)
 
@@ -57,7 +58,7 @@ def plotResults(state_list, control_list, t_arr):
 
     rot_z_arr = np.array([state.rot_z for state in state_list])
     rate_z_arr = np.array([state.rate_z for state in state_list])
-    control_arr = np.array(control_list)
+    control_arr = np.array([ctrl['rot'] for ctrl in control_list])
 
     n = state_list[0].n
 
@@ -96,6 +97,6 @@ if __name__ == "__main__":
 
     traj = np.zeros([2,len(t_arr)])
 
-    u_inj = {0: [1e-3,0]}
+    u_inj = {0: {'rot':[1e-4,0]}}
 
     simulate(arm, traj, tf, dt_dyn, dt_control=dt_control, u_inj=u_inj)
