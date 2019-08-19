@@ -294,10 +294,11 @@ def dynamicsStep(arm, u, dt, noise=False):
     arm = simulateTorsion(arm, M1, M2, dt, noise)
 
     # Bending Simulation
+    # TODO: implement external forces
+    M1 = u['lat'][0]
+    M2 = u['lat'][1]
     F1 = 0
-    M1 = 0
     F2 = 0
-    M2 = 0
 
     arm = simulateBending(arm, F1, F2, M1, M2, dt, noise)
 
@@ -336,5 +337,5 @@ if __name__ == "__main__":
         arm = dynamicsStep(arm,u,dt)
         state_list.append(copy.copy(arm.state))
 
-    import simulate
-    simulate.plotResults(state_list, np.zeros(len(t_arr)), t_arr)
+    import plotResults
+    simulate.plotAll(state_list, np.zeros(len(t_arr)), t_arr)

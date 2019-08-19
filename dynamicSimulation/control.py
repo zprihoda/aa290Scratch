@@ -3,6 +3,12 @@
 1: https://en.wikibooks.org/wiki/Strength_of_Materials/Torsion
     Torsional Strenght Equation:
         phi = TL/(Gj)
+
+TODO: Implement Max transverse stress constraint
+TODO: Implement variable boundary conditions to mpc controllers
+TODO: Consider LQR for speed improvements
+TODO: Consider running MPC at 1 HZ (or something)
+        and keeping the 10 most recent controls
 """
 
 import numpy as np
@@ -30,6 +36,8 @@ def controlStep(y, waypoint, mode, dt):
 
     if mode == 'none':
         u['rot'] =  [0,0]
+        u['lat'] = [0,0,0,0]
+
     elif mode == 'damping':
         y_rot = y['rot_z']
 
@@ -39,9 +47,11 @@ def controlStep(y, waypoint, mode, dt):
         ddtheta = torsionDampingControl(y_rot)
         M = I*ddtheta
         u['rot'] = M   # assume we are commanding the moment
+        u['lat'] = [0,0,0,0]
 
     elif mode == 'mpc':
-        u['rot'] = mpcController(y,dt)
+        u['rot'] = mpcRotController(y,dt)
+        u['lat'] = mpcLatController(y,dt)
 
     return u
 
@@ -65,7 +75,7 @@ def torsionDampingControl(y):
     return u
 
 
-def mpcController(y,dt):
+def mpcRotController(y,dt):
 
     n = len(y['rot_z'])
     dl = y['r']/n
@@ -97,6 +107,65 @@ def mpcController(y,dt):
     T_max = 100       # max torsion
 
     J_d = cp.sum(cp.abs(z[n,:]-z[-1,:]))        # damping
+    J_c = cp.sum(cp.abs(u))                     # control
+    J_f = cp.norm(z[:,-1]-X_des)                # final
+    obj = cp.Minimize(g_d*J_d + g_c*J_c + g_f*J_f)
+
+    constr = []
+    constr += [z[:,0] == X0]                    # initial condition
+    constr += [z[:,1:] == A@z[:,:-1] + B@u]     # FE dynamics
+    constr += [cp.abs(u) <= u_max]              # control limits
+    constr += [cp.abs(z[0:n-1,:] - z[1:n,:])  <= T_max*dl/k_rot] #torsional strength [1]
+
+    prob = cp.Problem(obj, constr)
+    try:
+        result = prob.solve()
+        if prob.status == 'optimal':
+            u_opt = u.value[:,0]
+        else:
+            u_opt = [0,0]
+    except cp.error.SolverError:
+        print("Warning: cvx solver failed")
+        # TODO: should be able to extract the best control from
+        #   cvxpy when it fails. OR, just use a solver that doesn't fail
+        #   e.g. MOSEK
+        u_opt = [0,0]
+
+    return u_opt
+
+def mpcLatController(y,dt):
+
+    n = len(y['def_lat'])//2
+    dl = y['r']/n
+
+    # generate temporary arm object to get structural properties from
+    # TODO: Fix up this architecture
+    #   controller shouldn't need to generate an arm.
+    #   Structural properties should be stored elsewhere
+    arm = Arm(y['r'], y['rot_z'], num_fe=n)
+    k_rot = arm.structProps['k_lat']
+
+    A,B = dynamics.getABDeflection(arm, dt)
+    B = B[:,0::2]
+
+    ## setup optimal control problem
+    X0 = np.append(y['def_lat'], y['rate_lat'])
+    X_des = np.zeros(4*n)
+    X_des[1::2] = np.pi/4    # rotate arm 45 degrees in plane
+    T = 50  # time horizon
+
+    # solve cvx problem
+    z = cp.Variable([4*n,T])
+    u = cp.Variable([2,T-1])
+
+    g_d = 1     # damping
+    g_c = 1     # control
+    g_f = 2     # final
+
+    u_max = 1e-3    # max control
+    T_max = 100       # max transverse stress
+
+    J_d = cp.sum(cp.abs(z[n,:]-z[-2,:]) + cp.abs(z[n+1,:]-z[-1,:]))        # damping
     J_c = cp.sum(cp.abs(u))                     # control
     J_f = cp.norm(z[:,-1]-X_des)                # final
     obj = cp.Minimize(g_d*J_d + g_c*J_c + g_f*J_f)
