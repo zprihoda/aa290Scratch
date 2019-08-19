@@ -58,12 +58,15 @@ def getDeflectionMatrices(n,E,A,L,rho,I):
 
     return K_tot, C_tot, M_tot
 
-def getNaturalFrequencies(K,M,fixed_idx=None):
+def getNaturalFrequencies(K,M,start_idx=0, end_idx=None):
     """Obtain natural frequencies from eigenvalue problem"""
 
-    M = M[fixed_idx:,fixed_idx:]
-    K = K[fixed_idx:,fixed_idx:]
-
+    if end_idx is None:
+        M = M[start_idx:,start_idx:]
+        K = K[start_idx:,start_idx:]
+    else:
+        M = M[start_idx:-end_idx,start_idx:-end_idx]
+        K = K[start_idx:-end_idx,start_idx:-end_idx]
     n = M.shape[0]
 
     A = np.dot(npl.inv(M), K)   # fixed-free rod
@@ -71,7 +74,11 @@ def getNaturalFrequencies(K,M,fixed_idx=None):
     sort_idx = lmbda.argsort()[:min(3,n)]
 
     w = np.sqrt(lmbda[sort_idx])
-    v = [np.append([0]*fixed_idx,v[:,i]) for i in sort_idx]
+
+    if end_idx is None:
+        end_idx = 0
+
+    v = [np.hstack([[0]*start_idx,v[:,i],[0]*end_idx]) for i in sort_idx]
 
     return w,v
 
@@ -98,11 +105,11 @@ def main():
     wd_arr = []
     for n in n_list:
         K,C,M = getTorsionMatrices(n,G,A,L,rho,I_zz)
-        wt,vt = getNaturalFrequencies(K,M,fixed_idx=1)
+        wt,vt = getNaturalFrequencies(K,M,start_idx=1)
         wt_arr.append(wt)
 
         K,C,M, = getDeflectionMatrices(n,E,A,L,rho,I_xx)
-        wd,vd = getNaturalFrequencies(K,M,fixed_idx=2)
+        wd,vd = getNaturalFrequencies(K,M,start_idx=2)
         wd_arr.append(wd)
 
     wt_arr = np.array(wt_arr)
