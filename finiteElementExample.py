@@ -68,7 +68,9 @@ def getBeamMatrices(n,E,w,h,L,rho):
     A = w*h
     dl = L/(n+1)
     dm = dl*A*rho
-    I = 1./12 * dm/2 * (dl**2 + h**2)
+    m = L*A*rho
+
+    I = 1./12 * m/2 * (L**2 + h**2)
     # I = 1./12 * dm/2 * (dl**2)
 
     K_e = E*I/dl**3 * np.array([
@@ -130,21 +132,19 @@ def getBeamNaturalFrequencies(K,M,L,plot=False):
         plt.xlim([0,L])
         plt.show()
 
-
-
 def main():
 
     ## rod example
-    # E = 80e9
-    # A = 0.01
-    # L = 8.
-    # rho = 7800.
-    # rho = 8000.
+    E = 80e9
+    A = 0.01
+    L = 8.
+    rho = 7800.
+    rho = 8000.
 
-    # n = 40
+    n = 40
 
-    # K,C,M = getRodMatrices(n,E,A,L,rho)
-    # getRodNaturalFrequencies(K,M,L,plot=True)
+    K,C,M = getRodMatrices(n,E,A,L,rho)
+    getRodNaturalFrequencies(K,M,L,plot=True)
 
 
     ## Beam Example
@@ -155,10 +155,10 @@ def main():
     L = 0.2
     rho = 2700
 
-    n = 5
+    n = 40
 
     K,C,M = getBeamMatrices(n,E,w,h,L,rho)
-    getBeamNaturalFrequencies(K,M,L,plot=False)
+    getBeamNaturalFrequencies(K,M,L,plot=True)
 
 if __name__ == "__main__":
     main()
