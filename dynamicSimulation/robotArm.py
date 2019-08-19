@@ -55,11 +55,11 @@ class ArmState():
 
         self.pos_z = np.arange(dl/2.,r,dl)
 
-        self.rot_z = np.zeros(n)
-        self.rate_z = np.zeros(n)
+        self.rot_z = np.zeros(n)    # [theta_1 ... theta_n]
+        self.rate_z = np.zeros(n)   # [dtheta_1, ... dtheta_n]
 
-        self.def_x = np.zeros(n)
-        self.def_y = np.zeros(n)
+        self.def_lat = np.zeros(2*n)    # [w_1, theta_1, ... , w_n, theta_n]
+        self.rate_lat = np.zeros(2*n)
 
 
 if __name__ == "__main__":

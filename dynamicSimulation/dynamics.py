@@ -90,75 +90,161 @@ def dynamicsStep(arm, u, dt, noise=False):
     return arm
 
 
-def getRelationMatrix(n):
-    """
-    return the relation matrix for our finite element mode
-    For a 3 element model:
-        C =[[-1, 1, 0],
-            [ 1,-2, 1],
-            [ 0, 1,-1]]
-    """
+def getTorsionMatrices(n,G,A,L,r,rho):
+    dl = L/n
+    m = rho*A*L
+    I = m*r**2
 
-    tmp = -2*np.ones(n)
-    tmp[0] = -1
-    tmp[-1] = -1
-    C = np.diag(tmp)
-    C += np.diag([1]*(n-1),k=1)
-    C += np.diag([1]*(n-1),k=-1)
+    K = np.diag([2.]*n) + np.diag([-1.]*(n-1), k=1) + np.diag([-1.]*(n-1), k=-1)
+    K[0,0] = 1
+    K[-1,-1] = 1
+    K *= G*A/dl
 
-    return C
+    C = 0.01*K
+    # C = 0.0*K
 
-def getABMatrices(n, k, c, I, dt):
-    C = getRelationMatrix(n)
+    M = np.diag([2/3.]*n) + np.diag([1/6.]*(n-1), k=1) + np.diag([1/6.]*(n-1), k=-1)
+    M[0,0] = 1/3.
+    M[-1,-1] = 1/3.
+    M *= I/n
+
+    return K, C, M
+
+def getABTorsion(arm, dt):
+    # obtain properties from arm
+    L = arm.r
+
+    n = arm.state.n
+    dl = arm.state.dl
+
+    r = arm.structProps['radius']
+    rho = arm.structProps['density']
+    delta = arm.structProps['thickness']
+    G = arm.structProps['k_rot']
+
+    area = 2*np.pi*r*delta
+
+    # get A and B
+    K,C,M = getTorsionMatrices(n,G,area,L,r,rho)
+    M_inv = npl.inv(M)
+
+
     A = np.vstack([np.hstack([np.zeros([n,n]), np.eye(n)]),
-                   np.hstack([k/I*C, c/I*C])
-                   ])
+                   np.hstack([-M_inv@K, -M_inv@C])])
+    B_tmp = np.vstack([np.array([1,0]),
+                       np.zeros([n-2,2]),
+                       np.array([0,1])
+                      ])
     B = np.vstack([np.zeros([n,2]),
-                   np.array([1/I,0]),
-                   np.zeros([n-2,2]),
-                   np.array([0,1/I])
-                   ])
+                   M_inv@B_tmp])
 
     # discretize dynamics
-    A_d = spl.expm(A*dt)
-
     t_arr = np.linspace(0,1,10)*dt
     y_arr = np.array([spl.expm(t*A) for t in t_arr])
-
     tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+
+    A_d = spl.expm(A*dt)
     B_d = np.dot(tmp,B)
 
     return A_d, B_d
 
-def simulateTorsion(arm, M1, M2, dt, noise):
+def getDeflectionMatrices(n,E,A,L,r,rho):
+    dl = L/n
+    m = rho*A*L
+    dm = m/n
+
+    I = 1./12 * m * (6*r**2 + dl**2)
+
+    K_e = E*I/dl**3 * np.array([
+            [   12,    6*dl,   -12,    6*dl],
+            [ 6*dl, 4*dl**2, -6*dl, 2*dl**2],
+            [  -12,   -6*dl,    12,   -6*dl],
+            [ 6*dl, 2*dl**2, -6*dl, 4*dl**2]
+            ])
+
+    M_e = rho*A*dl/420 * np.array([
+            [    156,    22*dl,     54,   -13*dl],
+            [  22*dl,  4*dl**2,  13*dl, -3*dl**2],
+            [     54,    13*dl,    156,   -22*dl],
+            [ -13*dl, -3*dl**2, -22*dl,  4*dl**2]
+            ])
+
+    C_e = 0.01*K_e
+
+    K_tot = np.zeros([2*n,2*n])
+    M_tot = np.zeros([2*n,2*n])
+    for i in range(n-1):
+        K_tot[2*i:2*i+4,2*i:2*i+4] += K_e
+        M_tot[2*i:2*i+4,2*i:2*i+4] += M_e
+
+    C_tot = 0.01*K_tot
+
+    return K_tot, C_tot, M_tot
+
+def getABDeflection(arm, dt):
+    # obtain properties from arm
+    L = arm.r
+
+    n = arm.state.n
+    dl = arm.state.dl
+
+    r = arm.structProps['radius']
+    rho = arm.structProps['density']
+    delta = arm.structProps['thickness']
+    E = arm.structProps['k_lat']
+
+    area = 2*np.pi*r*delta
+
+    # get A and B
+    K,C,M = getDeflectionMatrices(n,E,area,L,r,rho)
+    M_inv = npl.inv(M)
+
+
+    A = np.vstack([np.hstack([np.zeros([2*n,2*n]), np.eye(2*n)]),
+                   np.hstack([-M_inv@K, -M_inv@C])])
+    B_tmp = np.vstack([np.array([1,0,0,0]),
+                       np.array([0,1,0,0]),
+                       np.zeros([2*(n-2),4]),
+                       np.array([0,0,1,0]),
+                       np.array([0,0,0,1])
+                      ])
+    B = np.vstack([np.zeros([2*n,4]),
+                   M_inv@B_tmp])
+
+    # discretize dynamics
+    t_arr = np.linspace(0,1,10)*dt
+    y_arr = np.array([spl.expm(t*A) for t in t_arr])
+    tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+
+    A_d = spl.expm(A*dt)
+    B_d = np.dot(tmp,B)
+
+    return A_d, B_d
+
+
+def simulateTorsion(arm, M1, M2, dt, noise=None):
     """
     Simulate torsional dynamics
 
     Arguments:
-        x: state [theta_1 ... theta_n, theta_dot_1 ... theta_dot_n]
-        M1: Applied moment at start of boom
-        M2: Applied moment at end of boom
+        arm   : Arm object
+        M1    : Applied moment at start of boom
+        M2    : Applied moment at end of boom
+        dt    : Time step interval
+        noise : (optional) stdev of noise to inject into dynamics
     Output:
-        x_new: updated state
+        Updated arm object
     """
 
-    # obtain properties from arm
     n = arm.state.n
-    dl = arm.state.dl
-    r = arm.structProps['radius']
-    rho = arm.structProps['density']
-    delta = arm.structProps['thickness']
 
-    I_fe = structProp.getBoomInertia(dl, r, delta, rho)[2,2]     # moment of inertia
-    k = arm.structProps['k_rot']
-    c = arm.structProps['c_rot']
+    # get dynamics and control matrices
+    A_d,B_d = getABTorsion(arm, dt)
 
+    # setup state
     theta = arm.state.rot_z
     theta_dot = arm.state.rate_z
     X = np.append(theta, theta_dot)
-
-    # get dynamics and control matrices
-    A_d, B_d = getABMatrices(n, k, c, I_fe, dt)
 
     # Update step
     u = np.array([M1,M2])
@@ -176,20 +262,47 @@ def simulateTorsion(arm, M1, M2, dt, noise):
 
     return arm
 
-def simulateBending(arm, M1, M2, dt):
-    # TODO: Implement and test
-    raise NotImplementedError('Bending not Implemented yet')
+def simulateBending(arm, F1, F2, M1, M2, dt, noise=None):
+    """
+    Simulate torsional dynamics
 
-    # obtain properties from arm
+    Arguments:
+        arm   : Arm object
+        F1    : Applied force at start of boom
+        F2    : Applied force at end of boom
+        M1    : Applied moment at start of boom
+        M2    : Applied moment at end of boom
+        dt    : Time step interval
+        noise : (optional) stdev of noise to inject into dynamics
+    Output:
+        Updated arm object
+    """
+
     n = arm.state.n
-    dl = arm.state.dl
-    I = structProp.getBoomInertia(dl)[0,0]     # moment of inertia
-    k = arm.structProps['k_lat']
-    c = arm.structProps['c_lat']
 
-    u = arm.state.lat_x
-    u_dot = arm.state.lat_dx
-    X = np.append(u, u_dot)
+    # get dynamics and control matrices
+    A_d,B_d = getABDeflection(arm, dt)
+
+    # setup state
+    delta = arm.state.def_lat
+    ddelta = arm.state.rate_lat
+    X = np.append(delta, ddelta)
+
+    # Update step
+    u = np.array([F1, M1, F2, M2])
+    X_new = np.dot(A_d,X) + np.dot(B_d,u)
+
+    delta_new = X_new[0:2*n]
+    ddelta_new = X_new[2*n:]
+
+    if noise:
+        delta_new += sigma_theta*np.random.randn(2*n)
+        ddleta_new += sigma_dtheta*np.random.randn(2*n)
+
+    arm.state.def_lat = delta_new
+    arm.state.rate_lat = ddelta_new
+
+    return arm
 
 
 if __name__ == "__main__":
@@ -197,11 +310,11 @@ if __name__ == "__main__":
     from robotArm import Arm
     import copy
 
-    arm = Arm(1,np.zeros(6))
+    arm = Arm(1,np.zeros(6), num_fe=10)
 
     # simulate
-    tf = 1.0
-    dt = 1e-3
+    tf = 10.0
+    dt = 1e-2
 
     t_arr = np.arange(0,tf,dt)
     u_arr = np.zeros([2,len(t_arr)])
@@ -211,10 +324,11 @@ if __name__ == "__main__":
     u_arr[0,1] = -1e-6
 
     state_list = []
-    for i,t in enumerate(t_arr):
+    state_list.append(copy.copy(arm.state))
+    for i in range(len(t_arr)-1):
         u = u_arr[:,i]
         arm = dynamicsStep(arm,u,dt)
         state_list.append(copy.copy(arm.state))
 
     import simulate
-    simulate.plotResults(state_list,t_arr)
+    simulate.plotResults(state_list, np.zeros(len(t_arr)), t_arr)
