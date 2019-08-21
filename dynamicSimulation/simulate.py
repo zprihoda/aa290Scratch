@@ -5,7 +5,7 @@ from control import controlStep
 from dynamics import dynamicsStep
 from measurement import simulateMeasurements
 import structuralProperties as structProp
-from plotResults import plotAll
+from plotResults import plotAll, animateTorsion, animateBending
 
 def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
     """
@@ -52,7 +52,7 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
         state_list.append(copy.copy(arm.state))
         control_list.append(u)
 
-    plotAll(state_list, control_list, t_arr)
+    return state_list, control_list, t_arr
 
 
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     arm = Arm(r=1, theta_arr=np.zeros(6), num_fe=10)
 
     # simulate
-    tf = 1.0
+    tf = 10.0
 
     dt_dyn = 1e-2
     dt_control = 1e-1
@@ -76,4 +76,8 @@ if __name__ == "__main__":
                  }
             }
 
-    simulate(arm, traj, tf, dt_dyn, dt_control=dt_control, u_inj=u_inj)
+    state_list, control_list, t_arr = simulate(arm, traj, tf, dt_dyn, dt_control=dt_control, u_inj=u_inj)
+
+    plotAll(state_list, control_list, t_arr)
+    animateTorsion(state_list,t_arr)
+    animateBending(state_list,t_arr)
