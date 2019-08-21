@@ -318,6 +318,8 @@ if __name__ == "__main__":
     import copy
 
     arm = Arm(1,np.zeros(6), num_fe=10)
+    arm.state.def_lat[1::2] = 0.1
+    arm.state.rot_z[0] = 0.1
 
     # simulate
     tf = 10.0
@@ -325,17 +327,17 @@ if __name__ == "__main__":
 
     t_arr = np.arange(0,tf,dt)
     u_arr = np.zeros([2,len(t_arr)])
-
-    # apply an impulse (positive then negative)
-    u_arr[0,0] = 1e-6
-    u_arr[0,1] = -1e-6
+    u_arr = [{'rot':[0,0],'lat':[0,0]} for t in t_arr]
 
     state_list = []
     state_list.append(copy.copy(arm.state))
     for i in range(len(t_arr)-1):
-        u = u_arr[:,i]
-        arm = dynamicsStep(arm,u,dt)
+
+        arm = dynamicsStep(arm,u_arr[i],dt)
         state_list.append(copy.copy(arm.state))
 
     import plotResults
-    simulate.plotAll(state_list, np.zeros(len(t_arr)), t_arr)
+    plotResults.plotAll(state_list, u_arr, t_arr)
+    plotResults.animateTorsion(state_list,t_arr)
+    plotResults.animateBending(state_list,t_arr)
+
