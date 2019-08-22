@@ -223,7 +223,8 @@ def simulateTorsion(arm, M1, M2, dt, noise=None):
 
     return arm
 
-def simulateBending(arm, F1, F2, M1, M2, dt, noise=None):
+def simulateBending(arm, F1, F2, M1, M2, dt,
+                    bc_start=0, bc_end=0, noise=None):
     """
     Simulate torsional dynamics
 
@@ -234,6 +235,10 @@ def simulateBending(arm, F1, F2, M1, M2, dt, noise=None):
         M1    : Applied moment at start of boom
         M2    : Applied moment at end of boom
         dt    : Time step interval
+        bc_start, bc_end: boundary conditions at the start and end of boom
+            0:  No boundary conditions (default)
+            1: fixed deflection, free rotation (pin joint)
+            2: fixed deflection, fixed rotation
         noise : (optional) stdev of noise to inject into dynamics
     Output:
         Updated arm object
@@ -242,26 +247,50 @@ def simulateBending(arm, F1, F2, M1, M2, dt, noise=None):
     n = arm.state.n
 
     # get dynamics and control matrices
-    A_d,B_d = getABDeflection(arm, dt)
+    A_d, B_d = getABDeflection(arm, dt)
 
-    # setup state
+    # # setup state
     delta = arm.state.def_lat
     ddelta = arm.state.rate_lat
     X = np.append(delta, ddelta)
+
+    # handle boundary conditions
+    idx = range(2*n)
+    idx_rm = []
+    if bc_start == 1:
+        idx_rm.extend([0])
+    elif bc_start == 2:
+        idx_rm.extend([0, 1])
+    if bc_end == 1:
+        idx_rm.extend([2*n-2])
+    elif bc_end == 2:
+        idx_rm.extend([2*n-2, 2*n-1])
+
+    idx_keep = np.array(list(set(idx)-set(idx_rm)))
+    idx_rm = np.array(idx_rm)
+    idx_keep2 = np.append(idx_keep, idx_keep+2*n)
+
+    A_d = A_d[idx_keep2[:,None],idx_keep2]
+    B_d = B_d[idx_keep2,:]
+    X = X[idx_keep2]
 
     # Update step
     u = np.array([F1, M1, F2, M2])
     X_new = np.dot(A_d,X) + np.dot(B_d,u)
 
-    delta_new = X_new[0:2*n]
-    ddelta_new = X_new[2*n:]
+    delta_new = X_new[:len(X_new)//2]
+    ddelta_new = X_new[len(X_new)//2:]
 
+    # add noise
     if noise:
         delta_new += sigma_theta*np.random.randn(2*n)
         ddleta_new += sigma_dtheta*np.random.randn(2*n)
 
-    arm.state.def_lat = delta_new
-    arm.state.rate_lat = ddelta_new
+    # assign outputs
+    arm.state.def_lat = np.zeros(2*n)
+    arm.state.def_lat[idx_keep] = delta_new
+    arm.state.rate_lat = np.zeros(2*n)
+    arm.state.rate_lat[idx_keep] = ddelta_new
 
     return arm
 
@@ -318,7 +347,9 @@ if __name__ == "__main__":
     import copy
 
     arm = Arm(1,np.zeros(6), num_fe=10)
-    arm.state.def_lat[1::2] = 0.1
+    arm.state.def_lat[1::2] = 1.0
+    arm.state.def_lat[0::2] = arm.state.pos_z
+
     arm.state.rot_z[0] = 0.1
 
     # simulate
