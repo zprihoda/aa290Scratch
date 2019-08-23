@@ -99,17 +99,15 @@ def mpcRotController(y,dt):
     z = cp.Variable([2*n,T])
     u = cp.Variable([2,T-1])
 
-    g_d = 1     # damping
     g_c = 1     # control
-    g_f = 2     # final
+    g_f = 1     # final
 
     u_max = 1e-3    # max control
     T_max = 100       # max torsion
 
-    J_d = cp.sum(cp.abs(z[n,:]-z[-1,:]))        # damping
     J_c = cp.sum(cp.abs(u))                     # control
     J_f = cp.norm(z[:,-1]-X_des)                # final
-    obj = cp.Minimize(g_d*J_d + g_c*J_c + g_f*J_f)
+    obj = cp.Minimize(g_c*J_c + g_f*J_f)
 
     constr = []
     constr += [z[:,0] == X0]                    # initial condition
@@ -148,37 +146,44 @@ def mpcLatController(y,dt):
     A,B = dynamics.getABDeflection(arm, dt)
     B = B[:,0::2]
 
+    # handle fixed deflection bc
+    idx_rm = [0]
+    idx_keep = np.array(list(set(range(2*n))-set(idx_rm)))
+    idx_keep2 = np.append(idx_keep, idx_keep+2*n)
+    idx_rm = np.array(idx_rm)
+    idx_rm2 = np.append(idx_rm, idx_rm+2*n)
+
+    A = A[idx_keep2[:,None],idx_keep2]
+    B = B[idx_keep2,:]
+
     ## setup optimal control problem
     X0 = np.append(y['def_lat'], y['rate_lat'])
     X_des = np.zeros(4*n)
-    X_des[1::2] = np.pi/4    # rotate arm 45 degrees in plane
     T = 50  # time horizon
 
     # solve cvx problem
     z = cp.Variable([4*n,T])
     u = cp.Variable([2,T-1])
 
-    g_d = 1     # damping
     g_c = 1     # control
     g_f = 2     # final
 
-    u_max = 1e-3    # max control
+    u_max = 1e-3      # max control
     T_max = 100       # max transverse stress
 
-    J_d = cp.sum(cp.abs(z[n,:]-z[-2,:]) + cp.abs(z[n+1,:]-z[-1,:]))        # damping
     J_c = cp.sum(cp.abs(u))                     # control
     J_f = cp.norm(z[:,-1]-X_des)                # final
-    obj = cp.Minimize(g_d*J_d + g_c*J_c + g_f*J_f)
+    obj = cp.Minimize(g_c*J_c + g_f*J_f)
 
     constr = []
     constr += [z[:,0] == X0]                    # initial condition
-    constr += [z[:,1:] == A@z[:,:-1] + B@u]     # FE dynamics
+    constr += [z[idx_keep2,1:] == A@z[idx_keep2,:-1] + B@u]     # FE dynamics
+    constr += [z[idx_rm2,:] == 0]
     constr += [cp.abs(u) <= u_max]              # control limits
-    constr += [cp.abs(z[0:n-1,:] - z[1:n,:])  <= T_max*dl/k_rot] #torsional strength [1]
 
     prob = cp.Problem(obj, constr)
     try:
-        result = prob.solve()
+        result = prob.solve(feastol=1e-3, abstol=1e-3, reltol=5e-1)
         if prob.status == 'optimal':
             u_opt = u.value[:,0]
         else:

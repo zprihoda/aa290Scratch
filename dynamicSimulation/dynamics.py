@@ -223,8 +223,7 @@ def simulateTorsion(arm, M1, M2, dt, noise=None):
 
     return arm
 
-def simulateBending(arm, F1, F2, M1, M2, dt,
-                    bc_start=0, bc_end=0, noise=None):
+def simulateBending(arm, F1, F2, M1, M2, dt, bc_start=0, bc_end=0, noise=None):
     """
     Simulate torsional dynamics
 
@@ -236,7 +235,7 @@ def simulateBending(arm, F1, F2, M1, M2, dt,
         M2    : Applied moment at end of boom
         dt    : Time step interval
         bc_start, bc_end: boundary conditions at the start and end of boom
-            0:  No boundary conditions (default)
+            0: No boundary conditions (default)
             1: fixed deflection, free rotation (pin joint)
             2: fixed deflection, fixed rotation
         noise : (optional) stdev of noise to inject into dynamics
@@ -329,7 +328,7 @@ def dynamicsStep(arm, u, dt, noise=False):
     F1 = 0
     F2 = 0
 
-    arm = simulateBending(arm, F1, F2, M1, M2, dt, noise)
+    arm = simulateBending(arm, F1, F2, M1, M2, dt, noise=noise, bc_start=1)
 
     # Extension Simulation
     # TODO: Implement
