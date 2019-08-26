@@ -1,8 +1,8 @@
 import copy
 import numpy as np
 
-from control import controlStep
-from dynamics import dynamicsStep
+from control import Controller
+from dynamics import Dynamics
 from measurement import simulateMeasurements
 import structuralProperties as structProp
 from plotResults import plotAll, animateTorsion, animateBending
@@ -27,7 +27,7 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
     T = int(dt_control/dt_dyn)
 
     dyn_reduced = Dynamics(arm, dt_control, n=arm.state.n)
-
+    controller = Controller(dyn_reduced)
 
     state_list = []
     control_list = []
@@ -47,7 +47,7 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
             if j not in u_inj:
                 wp = traj[:,j]
                 y = simulateMeasurements(arm)
-                u = controlStep(y,wp,mode,dt_control)
+                u = controller.controlStep(y, wp, mode)
             else:
                 u = {}
                 u['rot'] = u_inj[j]['rot']

@@ -170,6 +170,7 @@ class Dynamics():
     def getABDeflection(self):
         # obtain properties from arm
         L = self.L
+        dt = self.dt
 
         n = self.n
         dl = L/n
