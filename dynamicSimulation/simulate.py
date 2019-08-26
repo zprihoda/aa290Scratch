@@ -17,11 +17,17 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
         u_inj: control injection
     """
 
+    dynamics = Dynamics(arm, dt_dyn)
+    # dynamics = Dynamics(arm, dt_dyn, noise_torsion=[1e-3,0], noise_bending=[1e-3,0,0,0])
+
     if dt_control is None:
         dt_control = dt_dyn
     else:
         dt_control = max(np.floor(dt_control/dt_dyn)*dt_dyn, dt_dyn)
     T = int(dt_control/dt_dyn)
+
+    dyn_reduced = Dynamics(arm, dt_control, n=arm.state.n)
+
 
     state_list = []
     control_list = []
@@ -47,8 +53,7 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
                 u['rot'] = u_inj[j]['rot']
                 u['lat'] = u_inj[j]['lat']
 
-        # arm = dynamicsStep(arm,u,dt_dyn, noise_torsion=[1e-3,0], noise_bending=[1e-3,0,0,0])
-        arm = dynamicsStep(arm,u,dt_dyn)
+        arm = dynamics.dynamicsStep(arm,u)
 
         state_list.append(copy.copy(arm.state))
         control_list.append(u)
