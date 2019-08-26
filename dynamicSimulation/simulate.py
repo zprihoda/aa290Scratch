@@ -47,6 +47,7 @@ def simulate(arm, traj, tf, dt_dyn, dt_control=None, u_inj=None):
                 u['rot'] = u_inj[j]['rot']
                 u['lat'] = u_inj[j]['lat']
 
+        # arm = dynamicsStep(arm,u,dt_dyn, noise_torsion=[1e-3,0], noise_bending=[1e-3,0,0,0])
         arm = dynamicsStep(arm,u,dt_dyn)
 
         state_list.append(copy.copy(arm.state))

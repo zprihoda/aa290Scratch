@@ -46,9 +46,6 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import structuralProperties as structProp
 
-sigma_theta = 1e-3
-sigma_dtheta = 1e-3
-
 
 def getTorsionMatrices(n,G,A,L,r,rho):
     dl = L/n
@@ -192,7 +189,8 @@ def simulateTorsion(arm, M1, M2, dt, noise=None):
         M1    : Applied moment at start of boom
         M2    : Applied moment at end of boom
         dt    : Time step interval
-        noise : (optional) stdev of noise to inject into dynamics
+        noise : (optional) var of noise to inject into dynamics
+                [sigma_theta^2, sigma_w^2]
     Output:
         Updated arm object
     """
@@ -204,22 +202,23 @@ def simulateTorsion(arm, M1, M2, dt, noise=None):
 
     # setup state
     theta = arm.state.rot_z
-    theta_dot = arm.state.rate_z
-    X = np.append(theta, theta_dot)
+    w = arm.state.rate_z
+    X = np.append(theta, w)
 
     # Update step
     u = np.array([M1,M2])
     X_new = np.dot(A_d,X) + np.dot(B_d,u)
 
-    theta_new = X_new[0:n]
-    theta_dot_new = X_new[n:]
+    if noise is not None:
+        mean = np.zeros(2*n)
+        cov = np.diag([noise[0]]*n + [noise[1]]*n)
+        X_new += np.random.multivariate_normal(mean,cov)
 
-    if noise:
-        theta_new += sigma_theta*np.random.randn(n)
-        theta_dot_new += sigma_dtheta*np.random.randn(n)
+    theta_new = X_new[0:n]
+    w_new = X_new[n:]
 
     arm.state.rot_z = theta_new
-    arm.state.rate_z = theta_dot_new
+    arm.state.rate_z = w_new
 
     return arm
 
@@ -238,7 +237,8 @@ def simulateBending(arm, F1, F2, M1, M2, dt, bc_start=0, bc_end=0, noise=None):
             0: No boundary conditions (default)
             1: fixed deflection, free rotation (pin joint)
             2: fixed deflection, fixed rotation
-        noise : (optional) stdev of noise to inject into dynamics
+        noise : (optional) var of noise to inject into dynamics
+                [sigma_delta^2, sigma_theta^2, sigma_delta_dot^2, sigma_w^2]
     Output:
         Updated arm object
     """
@@ -277,13 +277,16 @@ def simulateBending(arm, F1, F2, M1, M2, dt, bc_start=0, bc_end=0, noise=None):
     u = np.array([F1, M1, F2, M2])
     X_new = np.dot(A_d,X) + np.dot(B_d,u)
 
+    if noise is not None:
+        n_keep = len(idx_keep)
+        mean = np.zeros(4*n)[idx_keep2]
+        tmp = np.array([noise[0], noise[1]]*n + [noise[2], noise[3]]*n)
+        tmp = tmp[idx_keep2]
+        cov = np.diag(tmp)
+        X_new += np.random.multivariate_normal(mean,cov)
+
     delta_new = X_new[:len(X_new)//2]
     ddelta_new = X_new[len(X_new)//2:]
-
-    # add noise
-    if noise:
-        delta_new += sigma_theta*np.random.randn(2*n)
-        ddleta_new += sigma_dtheta*np.random.randn(2*n)
 
     # assign outputs
     arm.state.def_lat = np.zeros(2*n)
@@ -294,7 +297,7 @@ def simulateBending(arm, F1, F2, M1, M2, dt, bc_start=0, bc_end=0, noise=None):
     return arm
 
 
-def dynamicsStep(arm, u, dt, noise=False):
+def dynamicsStep(arm, u, dt, noise_torsion=None, noise_bending=None):
     """
     Main Dynamics Function called in simulation
 
@@ -305,7 +308,10 @@ def dynamicsStep(arm, u, dt, noise=False):
             M1-M6 = Command moments for each rotational motor
             F_r = Force in radial direction
         dt  : time step
-        noise: boolean indicating whether to inject dynamic noise
+        noise_torsion : (optional) var of noise to inject into torsion dynamics
+                [sigma_theta^2, sigma_w^2]
+        noise_bending : (optional) var of noise to inject into bending dynamics
+                [sigma_delta^2, sigma_theta^2, sigma_delta_dot^2, sigma_w^2]
     """
 
     # Torsion simulation
@@ -319,7 +325,7 @@ def dynamicsStep(arm, u, dt, noise=False):
     M1 = M1_cmd + M1_ext
     M2 = M2_cmd + M2_ext
 
-    arm = simulateTorsion(arm, M1, M2, dt, noise)
+    arm = simulateTorsion(arm, M1, M2, dt, noise=noise_torsion)
 
     # Bending Simulation
     # TODO: implement external forces
@@ -328,7 +334,7 @@ def dynamicsStep(arm, u, dt, noise=False):
     F1 = 0
     F2 = 0
 
-    arm = simulateBending(arm, F1, F2, M1, M2, dt, noise=noise, bc_start=1)
+    arm = simulateBending(arm, F1, F2, M1, M2, dt, noise=noise_bending, bc_start=1)
 
     # Extension Simulation
     # TODO: Implement
