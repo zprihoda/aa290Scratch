@@ -58,12 +58,25 @@ class Dynamics():
         self.dt = dt
         self.L = arm.r
 
-        self.A_torsion, self.B_torsion = self.getABTorsion()
+        A,B = self.getABTorsion()
+        self.A_torsion, self.B_torsion = self.discretizeAB(A,B)
         self.noise_torsion = noise_torsion
 
-        self.A_bending, self.B_bending = self.getABDeflection()
+        A,B = self.getABDeflection()
+        self.A_bending, self.B_bending = self.discretizeAB(A,B)
         self.noise_bending = noise_bending
 
+    def discretizeAB(self,A,B):
+        dt = self.dt
+
+        t_arr = np.linspace(0,1,10)*dt
+        y_arr = np.array([spl.expm(t*A) for t in t_arr])
+        tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+
+        A_d = spl.expm(A*dt)
+        B_d = np.dot(tmp,B)
+
+        return A_d, B_d
 
     def getTorsionMatrices(self):
         L = self.L
@@ -113,15 +126,7 @@ class Dynamics():
         B = np.vstack([np.zeros([n,2]),
                        M_inv@B_tmp])
 
-        # discretize dynamics
-        t_arr = np.linspace(0,1,10)*dt
-        y_arr = np.array([spl.expm(t*A) for t in t_arr])
-        tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
-
-        A_d = spl.expm(A*dt)
-        B_d = np.dot(tmp,B)
-
-        return A_d, B_d
+        return A, B
 
     def getDeflectionMatrices(self):
 
@@ -198,15 +203,7 @@ class Dynamics():
         B = np.vstack([np.zeros([2*n,4]),
                        M_inv@B_tmp])
 
-        # discretize dynamics
-        t_arr = np.linspace(0,1,10)*dt
-        y_arr = np.array([spl.expm(t*A) for t in t_arr])
-        tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
-
-        A_d = spl.expm(A*dt)
-        B_d = np.dot(tmp,B)
-
-        return A_d, B_d
+        return A, B
 
 
     def simulateTorsion(self, arm, M1, M2):
