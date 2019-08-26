@@ -47,7 +47,21 @@ import scipy.linalg as spl
 import structuralProperties as structProp
 
 class Dynamics():
-    def __init__(self, arm, dt, n=None, noise_bending=None, noise_torsion=None):
+    def __init__(self, arm, dt, n=None,
+                 noise_bending=None, noise_torsion=None,
+                 bc_start_torsion=1, bc_end_torsion=0,
+                 bc_start_bending=2, bc_end_bending=0
+                 ):
+        """
+        Torsion Boundary Conditions
+            0: no boundary conditions
+            1: fixed rotation
+        Bending Boundary Conditions
+        bc_start, bc_end: boundary conditions at the start and end of boom
+            0: No boundary conditions (default)
+            1: fixed deflection, free rotation (pin joint)
+            2: fixed deflection, fixed rotation
+        """
 
         if n is None:
             self.n = arm.state.n
@@ -98,7 +112,7 @@ class Dynamics():
         K[-1,-1] = 1
         K *= G*A/dl
 
-        C = 0.01*K
+        C = 0.1*K
         # C = 0.0*K
 
         M = np.diag([2/3.]*n) + np.diag([1/6.]*(n-1), k=1) + np.diag([1/6.]*(n-1), k=-1)
@@ -160,15 +174,13 @@ class Dynamics():
                 [ -13*dl, -3*dl**2, -22*dl,  4*dl**2]
                 ])
 
-        C_e = 0.01*K_e
-
         K_tot = np.zeros([2*n,2*n])
         M_tot = np.zeros([2*n,2*n])
         for i in range(n-1):
             K_tot[2*i:2*i+4,2*i:2*i+4] += K_e
             M_tot[2*i:2*i+4,2*i:2*i+4] += M_e
 
-        C_tot = 0.01*K_tot
+        C_tot = 0.1*K_tot
 
         return K_tot, C_tot, M_tot
 
@@ -250,7 +262,7 @@ class Dynamics():
 
         return arm
 
-    def simulateBending(self, arm, F1, F2, M1, M2, bc_start=0, bc_end=0, noise=None):
+    def simulateBending(self, arm, F1, F2, M1, M2, noise=None):
         """
         Simulate torsional dynamics
 
@@ -261,10 +273,6 @@ class Dynamics():
             M1    : Applied moment at start of boom
             M2    : Applied moment at end of boom
             dt    : Time step interval
-            bc_start, bc_end: boundary conditions at the start and end of boom
-                0: No boundary conditions (default)
-                1: fixed deflection, free rotation (pin joint)
-                2: fixed deflection, fixed rotation
             noise : (optional) var of noise to inject into dynamics
                     [sigma_delta^2, sigma_theta^2, sigma_delta_dot^2, sigma_w^2]
         Output:
@@ -280,7 +288,7 @@ class Dynamics():
         A_d = self.A_bending
         B_d = self.B_bending
 
-        # # setup state
+        # setup state
         delta = arm.state.def_lat
         ddelta = arm.state.rate_lat
         X = np.append(delta, ddelta)
@@ -378,6 +386,48 @@ class Dynamics():
         return arm
 
 
+class ReducedDynamics():
+    def __init__(self, full_dyn, n_red):
+        # Discretize Torsion dynamics
+        Af, Bf = full_dyn.getABTorsion()
+        A_red_t, B_red_t, C_red_t = self.reduceDynamics(Af, Bf, n_red)
+
+        # discretize bending dynamics
+        Af, Bf = full_dyn.getABDeflection()
+        A_red_t, B_red_t, C_red_t = self.reduceDynamics(Af, Bf, n_red)
+
+    def reduceDynamics(self, Af, Bf, n_red, Cf=None):
+        """
+        See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
+        """
+        # get P and Q (infinite grammians)
+        if Cf is None:
+            Cf = np.eye(Af.shape[0])
+
+        P = spl.solve_lyapunov(Af,   -Bf @ Bf.conj().T)
+        Q = spl.solve_lyapunov(Af.conj().T, -Cf.conj().T @ Cf)
+
+        # Obtain U, K, Sigma
+        U = npl.cholesky(P)
+        lmbda,K = npl.eig(U.conj().T @ Q @ U)
+        Sigma = np.diag(np.sqrt(lmbda))
+
+        # Obtain balanced similarity transform matrices
+        T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
+        T_inv = U @ K @ (1/np.sqrt(Sigma))
+
+        # Obtain Balanced Matrices
+        A_bal = T @ Af @ T_inv
+        B_bal = T @ B
+        C_bal = C @ T_inv
+
+        # Obtain reduced Matrices
+        A_red = A_bal[:n_red,:n_red]
+        B_red = B_bal[:n_red,:]
+        C_red = C_bal[:,:n_red]
+
+        return A_red, B_red, C_red
+
 if __name__ == "__main__":
     # simple test
     from robotArm import Arm
@@ -388,12 +438,13 @@ if __name__ == "__main__":
     dt = 1e-2
 
     # setup arm and dynamics
-    arm = Arm(1,np.zeros(6), num_fe=10)
+    arm = Arm(1,np.zeros(6), num_fe=5)
     arm.state.def_lat[1::2] = 1.0
     arm.state.def_lat[0::2] = arm.state.pos_z
     arm.state.rot_z[0] = 0.1
 
     dynamics = Dynamics(arm, dt)
+    # dyn_red = ReducedDynamics(dynamics, 5)
 
     # setup arrays
     t_arr = np.arange(0,tf,dt)
