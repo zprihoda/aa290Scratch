@@ -32,6 +32,10 @@ class TorsionFEModel():
         self.K_tot = np.zeros([2*n+1,2*n+1])
         self.compileSystemMatrices()
 
+        idx = np.array([0]+list(range(3,2*n+1)))
+        self.M_tot = self.M_tot[idx[:,None], idx]
+        self.K_tot = self.K_tot[idx[:,None], idx]
+
         self.C_tot = C_ratio * (self.K_tot + self.M_tot)
 
         self.A, self.B = self.compileAB()
@@ -130,18 +134,19 @@ def discretizeAB(A,B,dt):
 def main():
     mdl = TorsionFEModel(n=5,L=1)
 
-    tf = 100
-    dt = 0.1
+    tf = 0.1
+    dt = 0.0001
     t_arr = np.arange(0,tf,dt)
 
     A_d, B_d = discretizeAB(mdl.A, mdl.B,dt)
 
     X = np.zeros(A_d.shape[0])
-    X[-2] = 0.5
 
     u_arr = np.zeros([2,len(t_arr)])
     X_arr = np.zeros([len(X),len(t_arr)])
     X_arr[:,0] = X
+    u_arr[0,0:10] = 0.1
+    u_arr[0,10:20] = -0.1
 
     for i in range(len(t_arr)-1):
         u = u_arr[:,i]
