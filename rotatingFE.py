@@ -23,10 +23,10 @@ class TorsionFEModel():
         self.n = n
         self.L = L
         self.l = float(L)/n
-        self.rho = 1
-        self.A = 0.1
-        self.E = 1
-        self.I = 1
+        self.rho = 2710
+        self.A = 0.0032*0.019
+        self.E = 71e9
+        self.I = 5.253e-11
 
         self.M_tot = np.zeros([2*n+1,2*n+1])
         self.K_tot = np.zeros([2*n+1,2*n+1])
@@ -37,6 +37,7 @@ class TorsionFEModel():
         self.K_tot = self.K_tot[idx[:,None], idx]
 
         self.C_tot = C_ratio * (self.K_tot + self.M_tot)
+        self.C_tot = 1e-4 * (self.K_tot + self.M_tot)
 
         self.A, self.B = self.compileAB()
 
@@ -132,10 +133,10 @@ def discretizeAB(A,B,dt):
     return A_d, B_d
 
 def main():
-    mdl = TorsionFEModel(n=5,L=1)
+    mdl = TorsionFEModel(n=5,L=0.9)
 
-    tf = 0.1
-    dt = 0.0001
+    tf = 2.0
+    dt = 0.001
     t_arr = np.arange(0,tf,dt)
 
     A_d, B_d = discretizeAB(mdl.A, mdl.B,dt)
@@ -145,15 +146,15 @@ def main():
     u_arr = np.zeros([2,len(t_arr)])
     X_arr = np.zeros([len(X),len(t_arr)])
     X_arr[:,0] = X
-    u_arr[0,0:10] = 0.1
-    u_arr[0,10:20] = -0.1
+    u_arr[0,200:500] = 0.1
+    u_arr[0,500:800] = -0.1
 
     for i in range(len(t_arr)-1):
         u = u_arr[:,i]
         X = A_d@X + B_d@u
         X_arr[:,i+1] = X
 
-    plt.plot(t_arr,X_arr[-2,:])
+    plt.plot(t_arr,X_arr[0,:])
     plt.show()
 
 
