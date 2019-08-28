@@ -1,6 +1,6 @@
 """
 See https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1232628
-Approaches for dynamic modelling of flexiblemanipulator systems
+Approaches for dynamic modelling of flexible manipulator systems
 """
 
 import numpy as np
@@ -17,8 +17,8 @@ class Dynamics():
         self.C = C
 
 
-class TorsionFEModel():
-    def __init__(self, n, L, C_ratio=0.01):
+class LateralFEModel():
+    def __init__(self, n, L, C_ratio=0, bc_start=2, bc_end=0):
 
         self.n = n
         self.L = L
@@ -28,21 +28,21 @@ class TorsionFEModel():
         self.E = 71e9
         self.I = 5.253e-11
 
+        self.bc_start = bc_start
+        self.bc_end = bc_end
+
+        # obtain Finite Element model
         self.M_tot = np.zeros([2*n+1,2*n+1])
         self.K_tot = np.zeros([2*n+1,2*n+1])
         self.compileSystemMatrices()
 
-        idx = np.array([0]+list(range(3,2*n+1)))
-        self.M_tot = self.M_tot[idx[:,None], idx]
-        self.K_tot = self.K_tot[idx[:,None], idx]
-
         self.C_tot = C_ratio * (self.K_tot + self.M_tot)
-        self.C_tot = 1e-4 * (self.K_tot + self.M_tot)
 
         self.A, self.B = self.compileAB()
 
     def compileSystemMatrices(self):
 
+        # build total matrices out of element matrices
         for k in np.arange(1,self.n):
 
             M_e = self.getElementMassMatrix(k)
@@ -57,6 +57,24 @@ class TorsionFEModel():
             self.M_tot[start:stop,start:stop] += M_e[1:,1:]
 
             self.K_tot[start:stop,start:stop] += K_e
+
+        # Apply boundary conditions
+        idx = list(range(2*self.n+1))
+        idx_rm = []
+        if self.bc_start == 1:
+            idx_rm.extend([1])
+        if self.bc_start == 2:
+            idx_rm.extend([1,2])
+
+        if self.bc_end == 1:
+            idx_rm.extend([-2])
+        if self.bc_end == 2:
+            idx_rm.extend([-2,-1])
+
+        idx = np.array(list(set(idx)-set(idx_rm)))
+        self.M_tot = self.M_tot[idx[:,None], idx]
+        self.K_tot = self.K_tot[idx[:,None], idx]
+
 
     def getElementMassMatrix(self,k):
         # obtain constants
@@ -133,7 +151,7 @@ def discretizeAB(A,B,dt):
     return A_d, B_d
 
 def main():
-    mdl = TorsionFEModel(n=5,L=0.9)
+    mdl = LateralFEModel(n=5,L=0.9)
 
     tf = 2.0
     dt = 0.001
