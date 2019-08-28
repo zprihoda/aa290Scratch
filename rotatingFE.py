@@ -11,7 +11,33 @@ import matplotlib.pyplot as plt
 # np.set_printoptions(formatter={'float': lambda x: "{0:5.0f}".format(x)})
 
 class Dynamics():
-    def __init__(self, A, B, C):
+    def __init__(self, A, B, C=None):
+        if C is None:
+            C = np.eye(A.shape[0])
+
+        self.A = A
+        self.B = B
+        self.C = C
+
+    def discretizeDynamics(self,dt):
+
+        A = self.A
+        B = self.B
+
+        t_arr = np.linspace(0,1,10)*dt
+        y_arr = np.array([spl.expm(t*A) for t in t_arr])
+        tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+
+        A_d = spl.expm(A*dt)
+        B_d = np.dot(tmp,B)
+
+        return DiscreteDynamics(A_d,B_d,self.C)
+
+class DiscreteDynamics():
+    def __init__(self,A,B,C=None):
+        if C is None:
+            C = np.eye(A.shape[0])
+
         self.A = A
         self.B = B
         self.C = C
@@ -39,6 +65,12 @@ class LateralFEModel():
         self.C_tot = C_ratio * (self.K_tot + self.M_tot)
 
         self.A, self.B = self.compileAB()
+
+    @classmethod
+    def getDynamics(cls, n, L, C_ratio=0, bc_start=2, bc_end=0):
+        mdl = LateralFEModel(n, L, C_ratio=0, bc_start=2, bc_end=0)
+        dyn = Dynamics(mdl.A, mdl.B)
+        return dyn
 
     def compileSystemMatrices(self):
 
@@ -151,13 +183,14 @@ def discretizeAB(A,B,dt):
     return A_d, B_d
 
 def main():
-    mdl = LateralFEModel(n=5,L=0.9)
+    dyn = LateralFEModel.getDynamics(n=5,L=0.9)
 
     tf = 2.0
     dt = 0.001
     t_arr = np.arange(0,tf,dt)
 
-    A_d, B_d = discretizeAB(mdl.A, mdl.B,dt)
+    dyn_d = dyn.discretizeDynamics(dt)
+    A_d, B_d = dyn_d.A, dyn_d.B
 
     X = np.zeros(A_d.shape[0])
 
