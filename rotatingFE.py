@@ -216,8 +216,7 @@ class ReducedDynamics():
 
 def main():
     dyn = LateralFEModel.getDynamics(n=5,L=0.9,C_ratio=1e-2)
-    print(npl.eig(dyn.A)[0])
-    dyn_red = ReducedDynamics(dyn,4)
+    # dyn_red = ReducedDynamics(dyn,4)
 
     tf = 2.0
     dt = 0.001
