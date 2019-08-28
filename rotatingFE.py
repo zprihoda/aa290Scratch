@@ -1,6 +1,8 @@
 """
 See https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1232628
 Approaches for dynamic modelling of flexible manipulator systems
+
+stabsep
 """
 
 import numpy as np
@@ -42,10 +44,8 @@ class DiscreteDynamics():
         self.B = B
         self.C = C
 
-
 class LateralFEModel():
     def __init__(self, n, L, C_ratio=0, bc_start=2, bc_end=0):
-
         self.n = n
         self.L = L
         self.l = float(L)/n
@@ -61,14 +61,13 @@ class LateralFEModel():
         self.M_tot = np.zeros([2*n+1,2*n+1])
         self.K_tot = np.zeros([2*n+1,2*n+1])
         self.compileSystemMatrices()
-
-        self.C_tot = C_ratio * (self.K_tot + self.M_tot)
+        self.C_tot = C_ratio * self.K_tot
 
         self.A, self.B = self.compileAB()
 
     @classmethod
     def getDynamics(cls, n, L, C_ratio=0, bc_start=2, bc_end=0):
-        mdl = LateralFEModel(n, L, C_ratio=0, bc_start=2, bc_end=0)
+        mdl = LateralFEModel(n, L, C_ratio=C_ratio, bc_start=2, bc_end=0)
         dyn = Dynamics(mdl.A, mdl.B)
         return dyn
 
@@ -106,6 +105,8 @@ class LateralFEModel():
         idx = np.array(list(set(idx)-set(idx_rm)))
         self.M_tot = self.M_tot[idx[:,None], idx]
         self.K_tot = self.K_tot[idx[:,None], idx]
+        # self.K_tot[:,0] = -1e-6
+        # self.K_tot[0,:] = -1e-6
 
 
     def getElementMassMatrix(self,k):
@@ -171,20 +172,64 @@ class LateralFEModel():
 
         return A,B
 
-
 class ReducedDynamics():
     def __init__(self, full_dyn, n_red):
         Af, Bf = full_dyn.A, full_dyn.B
-        A_red, B_red, C_red = self.reduceDynamics(Af, Bf, n_red)
+        A_red, B_red, C_red = self.reduceDynamics(full_dyn, n_red)
 
         self.A = A_red
         self.B = B_red
         self.C = C_red
 
-    def reduceDynamics(self, Af, Bf, n_red, Cf=None):
+    def reduceDynamics(self, dyn, n_red, Cf=None):
         """
         See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
         """
+
+        n = dyn.A.shape[0]
+
+        # stable/unstable seperation
+        A_s, B_s, C_s, V, l = stabSep(dyn)
+
+        A_n = A_s[:l,:l]
+        A_c = A_s[:l,l:]
+        A_p = A_s[l:,l:]
+
+        B_n = B_s[:l,:]
+        B_p = B_s[l:,:]
+
+        C_n = C_s[:,:l]
+        C_p = C_s[:,l:]
+
+        # Form new seperated system:
+        # dX_n = A_n @ x_n + B_tilde @ u_tilde
+        # y = C_n @ X_n + D_tilde @ u_tilde
+        B_tilde = np.hstack([B_n, A_c])
+        n_tilde = n_red - (n-l)
+
+        # apply balanced reduction
+        A_nr, B_tilde_r, C_nr = self.balancedReduction(A_n, B_tilde, C_n, n_tilde)
+        l_r = A_nr.shape[0]
+        B_nr = B_tilde_r[:,:-(n-l)]
+        A_cr = B_tilde_r[:,-(n-l):]
+
+        # recombine system
+        A_r = np.vstack([
+            np.hstack([A_nr, A_cr]),
+            np.hstack([np.zeros([n-l,l_r]),A_p])
+            ])
+
+        B_r = np.vstack([B_nr, B_p])
+        C_r = np.hstack([C_nr,C_p])
+
+        # TODO: determine what transformations needed for x_nr and x_p terms
+        #   May include both the reduction similarity transform and the stabSep transforms...
+        #   be very careful, maybe check with Joe...
+
+        return A_r, B_r, C_r
+
+
+    def balancedReduction(self,Af, Bf, Cf, n_red):
         # get P and Q (infinite grammians)
         if Cf is None:
             Cf = np.eye(Af.shape[0])
@@ -203,8 +248,8 @@ class ReducedDynamics():
 
         # Obtain Balanced Matrices
         A_bal = T @ Af @ T_inv
-        B_bal = T @ B
-        C_bal = C @ T_inv
+        B_bal = T @ Bf
+        C_bal = Cf @ T_inv
 
         # Obtain reduced Matrices
         A_red = A_bal[:n_red,:n_red]
@@ -213,10 +258,23 @@ class ReducedDynamics():
 
         return A_red, B_red, C_red
 
+def stabSep(dyn):
+    """
+    See [1] for implementation details
+    References:
+    [1] : https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=78129&tag=1
+    """
+
+    A_s, V, l = spl.schur(dyn.A, sort='lhp')
+    B_s = V.T @ dyn.B
+    C_s = dyn.C @ V
+
+    return A_s, B_s, C_s, V, l
+
 
 def main():
-    dyn = LateralFEModel.getDynamics(n=5,L=0.9,C_ratio=1e-2)
-    # dyn_red = ReducedDynamics(dyn,4)
+    dyn = LateralFEModel.getDynamics(n=5,L=0.9,C_ratio=1e-4)
+    dyn_red = ReducedDynamics(dyn,15)
 
     tf = 2.0
     dt = 0.001
@@ -224,9 +282,6 @@ def main():
 
     dyn_d = dyn.discretizeDynamics(dt)
     A_d, B_d = dyn_d.A, dyn_d.B
-
-    # print(npl.eig(dyn.A)[0])
-    # input()
 
     X = np.zeros(A_d.shape[0])
 
