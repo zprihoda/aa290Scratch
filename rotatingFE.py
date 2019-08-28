@@ -171,19 +171,53 @@ class LateralFEModel():
 
         return A,B
 
-def discretizeAB(A,B,dt):
 
-    t_arr = np.linspace(0,1,10)*dt
-    y_arr = np.array([spl.expm(t*A) for t in t_arr])
-    tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+class ReducedDynamics():
+    def __init__(self, full_dyn, n_red):
+        Af, Bf = full_dyn.A, full_dyn.B
+        A_red, B_red, C_red = self.reduceDynamics(Af, Bf, n_red)
 
-    A_d = spl.expm(A*dt)
-    B_d = np.dot(tmp,B)
+        self.A = A_red
+        self.B = B_red
+        self.C = C_red
 
-    return A_d, B_d
+    def reduceDynamics(self, Af, Bf, n_red, Cf=None):
+        """
+        See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
+        """
+        # get P and Q (infinite grammians)
+        if Cf is None:
+            Cf = np.eye(Af.shape[0])
+
+        P = spl.solve_lyapunov(Af, -Bf @ Bf.conj().T)
+        Q = spl.solve_lyapunov(Af.conj().T, -Cf.conj().T @ Cf)
+
+        # Obtain U, K, Sigma
+        U = npl.cholesky(P)
+        lmbda,K = npl.eig(U.conj().T @ Q @ U)
+        Sigma = np.diag(np.sqrt(lmbda))
+
+        # Obtain balanced similarity transform matrices
+        T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
+        T_inv = U @ K @ (1/np.sqrt(Sigma))
+
+        # Obtain Balanced Matrices
+        A_bal = T @ Af @ T_inv
+        B_bal = T @ B
+        C_bal = C @ T_inv
+
+        # Obtain reduced Matrices
+        A_red = A_bal[:n_red,:n_red]
+        B_red = B_bal[:n_red,:]
+        C_red = C_bal[:,:n_red]
+
+        return A_red, B_red, C_red
+
 
 def main():
-    dyn = LateralFEModel.getDynamics(n=5,L=0.9)
+    dyn = LateralFEModel.getDynamics(n=5,L=0.9,C_ratio=1e-2)
+    print(npl.eig(dyn.A)[0])
+    dyn_red = ReducedDynamics(dyn,4)
 
     tf = 2.0
     dt = 0.001
@@ -191,6 +225,9 @@ def main():
 
     dyn_d = dyn.discretizeDynamics(dt)
     A_d, B_d = dyn_d.A, dyn_d.B
+
+    # print(npl.eig(dyn.A)[0])
+    # input()
 
     X = np.zeros(A_d.shape[0])
 
