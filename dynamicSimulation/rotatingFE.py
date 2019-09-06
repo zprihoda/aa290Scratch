@@ -175,10 +175,45 @@ class LateralFEModel():
 
 def plotResults(X_arr, u_arr, t_arr):
     # plot hub angle vs time
-    plt.plot(t_arr,X_arr[0,:])
+    plt.plot(t_arr,np.rad2deg(X_arr[0,:]))
     plt.xlabel('t')
     plt.ylabel(r'$\theta$')
     plt.show()
+
+def animateResults(X_arr, t_arr):
+
+    # obtain x,y,theta coordinates from state
+    v = X_arr[1::2,:]   # deflection at each element at each time
+    theta = X_arr[0,:]  # hub angle at each time
+    input()
+
+
+    # plot stuff
+    fig, ax = plt.subplots()
+
+    y_max = np.max(X_arr)
+    y_min = np.min(X_arr)
+    xc = (x_max + x_min)/2
+    yc = (y_max + y_min)/2
+    dx = 1.1*(x_max-x_min)/2
+    dy = 1.1*(y_max-y_min)/2
+
+    # initialize plot
+    line = ax.plot([],[],'b.')[0]
+    ax.set(xlim=[xc-dx, xc+dx],ylim=[yc-dy, yc+dy])
+
+    def animate(i):
+        dets = detection_hist[i]
+        x = [det.pos_raw[0] for det in dets]
+        y = [det.pos_raw[1] for det in dets]
+        line.set_xdata(x)
+        line.set_ydata(y)
+
+    # generate animation
+    anim = ani.FuncAnimation(fig,animate,frames=np.arange(len(detection_hist)))
+    plt.draw()
+    plt.show()
+
 
 def main():
     dyn = LateralFEModel.getDynamics(n=100,L=0.9,C_ratio=1e-4)
@@ -196,15 +231,16 @@ def main():
     u_arr = np.zeros([2,len(t_arr)])
     X_arr = np.zeros([len(X),len(t_arr)])
     X_arr[:,0] = X
-    u_arr[0,200:500] = 0.1
-    u_arr[0,500:800] = -0.1
+    u_arr[0,200:500] = 0.2
+    u_arr[0,500:800] = -0.2
 
     for i in range(len(t_arr)-1):
         u = u_arr[:,i]
         X = A_d@X + B_d@u
         X_arr[:,i+1] = X
 
-    plotResults(X_arr,u_arr,t_arr)
+    # plotResults(X_arr,u_arr,t_arr)
+    animateResults(X_arr, t_arr)
 
 
 
