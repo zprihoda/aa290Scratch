@@ -172,6 +172,14 @@ class LateralFEModel():
 
         return A,B
 
+
+def plotResults(X_arr, u_arr, t_arr):
+    # plot hub angle vs time
+    plt.plot(t_arr,X_arr[0,:])
+    plt.xlabel('t')
+    plt.ylabel(r'$\theta$')
+    plt.show()
+
 def main():
     dyn = LateralFEModel.getDynamics(n=100,L=0.9,C_ratio=1e-4)
     # dyn_red = ReducedDynamics(dyn,15)
@@ -196,8 +204,7 @@ def main():
         X = A_d@X + B_d@u
         X_arr[:,i+1] = X
 
-    plt.plot(t_arr,X_arr[0,:])
-    plt.show()
+    plotResults(X_arr,u_arr,t_arr)
 
 
 
