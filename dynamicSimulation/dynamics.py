@@ -49,7 +49,7 @@ import structuralProperties as structProp
 class Dynamics():
     def __init__(self, arm, dt, n=None,
                  noise_bending=None, noise_torsion=None,
-                 bc_start_torsion=1, bc_end_torsion=0,
+                 bc_start_torsion=0, bc_end_torsion=0,
                  bc_start_bending=2, bc_end_bending=0
                  ):
         """

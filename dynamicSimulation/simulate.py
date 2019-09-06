@@ -68,7 +68,7 @@ if __name__ == "__main__":
     arm = Arm(r=1, theta_arr=np.zeros(6), num_fe=10)
 
     # simulate
-    tf = 10.0
+    tf = 5.0
 
     dt_dyn = 1e-2
     dt_control = 1e-1
