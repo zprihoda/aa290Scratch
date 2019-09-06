@@ -75,10 +75,14 @@ class Dynamics():
         A,B = self.getABTorsion()
         self.A_torsion, self.B_torsion = self.discretizeAB(A,B)
         self.noise_torsion = noise_torsion
+        self.bc_start_torsion = bc_start_torsion
+        self.bc_end_torsion = bc_end_torsion
 
         A,B = self.getABDeflection()
         self.A_bending, self.B_bending = self.discretizeAB(A,B)
         self.noise_bending = noise_bending
+        self.bc_start_deflection = bc_start_bending
+        self.bc_end_deflection = bc_end_bending
 
     def discretizeAB(self,A,B):
         dt = self.dt
@@ -279,6 +283,9 @@ class Dynamics():
             Updated arm object
         """
 
+        bc_start = self.bc_start_deflection
+        bc_end = self.bc_end_deflection
+
         if self.n != arm.state.n:
             raise ValueError("Arm and dynamics must have the same number of elements")
         n = self.n
@@ -374,7 +381,7 @@ class Dynamics():
         F1 = 0
         F2 = 0
 
-        arm = self.simulateBending(arm, F1, F2, M1, M2, bc_start=1)
+        arm = self.simulateBending(arm, F1, F2, M1, M2)
 
         # Extension Simulation
         # TODO: Implement

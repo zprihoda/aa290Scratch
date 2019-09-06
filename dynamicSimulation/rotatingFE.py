@@ -174,7 +174,7 @@ class LateralFEModel():
 
 def main():
     dyn = LateralFEModel.getDynamics(n=100,L=0.9,C_ratio=1e-4)
-    dyn_red = ReducedDynamics(dyn,15)
+    # dyn_red = ReducedDynamics(dyn,15)
 
     tf = 2.0
     dt = 0.001
