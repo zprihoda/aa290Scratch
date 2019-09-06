@@ -3,6 +3,8 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import matplotlib.pyplot as plt
 
+import rotatingFE
+
 class ReducedDynamics():
     def __init__(self, full_dyn, n_red):
         Af, Bf = full_dyn.A, full_dyn.B
@@ -86,11 +88,10 @@ class ReducedDynamics():
         T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
         T_inv = U @ K @ Sigma_nhalf
 
-        if 1:
+        if 0:
             # test matrices
             tmp1 = T @ P @ T.conj().T
             tmp2 = T_inv.conj().T @ Q @ T_inv
-            print(np.max(abs(tmp1-tmp2))/np.max(abs(tmp1)))
 
             plt.plot(lmbda,'.')
             plt.show()
@@ -124,3 +125,7 @@ def stabSep(dyn):
     l = sum(npl.eigvals(A_s) < threshold)    # remove close to unstable elements
 
     return A_s, B_s, C_s, V, l
+
+if __name__ == "__main__":
+    # TODO: Implement Example
+    pass
