@@ -9,6 +9,7 @@ import numpy as np
 import numpy.linalg as npl
 import scipy.linalg as spl
 import matplotlib.pyplot as plt
+import matplotlib.animation as ani
 
 from reducedDynamics import *
 
@@ -183,35 +184,32 @@ def plotResults(X_arr, u_arr, t_arr):
 def animateResults(X_arr, t_arr):
 
     # obtain x,y,theta coordinates from state
-    v = X_arr[1::2,:]   # deflection at each element at each time
-    theta = X_arr[0,:]  # hub angle at each time
-    input()
+    n = (len(X_arr[:,0])-2)//4
+    v_arr = X_arr[1:2*n:2,:]   # deflection at each element at each time
+    u = np.linspace(0, 1, n+1)
 
+    theta = X_arr[0,:]  # hub angle at each time
 
     # plot stuff
     fig, ax = plt.subplots()
 
-    y_max = np.max(X_arr)
-    y_min = np.min(X_arr)
-    xc = (x_max + x_min)/2
-    yc = (y_max + y_min)/2
-    dx = 1.1*(x_max-x_min)/2
+    y_max = np.max(v_arr)
+    y_min = np.min(v_arr)
+    yc = (y_max + y_min) / 2
     dy = 1.1*(y_max-y_min)/2
 
     # initialize plot
-    line = ax.plot([],[],'b.')[0]
-    ax.set(xlim=[xc-dx, xc+dx],ylim=[yc-dy, yc+dy])
+    line = ax.plot([],[],'b.-')[0]
+    ax.set(xlim=[0, 1],ylim=[yc-dy, yc+dy])
 
     def animate(i):
-        dets = detection_hist[i]
-        x = [det.pos_raw[0] for det in dets]
-        y = [det.pos_raw[1] for det in dets]
-        line.set_xdata(x)
-        line.set_ydata(y)
+        v = np.hstack([0,v_arr[:,i]])
+        line.set_xdata(u)
+        line.set_ydata(v)
+
 
     # generate animation
-    anim = ani.FuncAnimation(fig,animate,frames=np.arange(len(detection_hist)))
-    plt.draw()
+    anim = ani.FuncAnimation(fig,animate,frames=np.arange(0,len(t_arr),5))
     plt.show()
 
 
