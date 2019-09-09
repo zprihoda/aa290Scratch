@@ -13,8 +13,6 @@ import matplotlib.animation as ani
 
 from reducedDynamics import *
 
-# np.set_printoptions(formatter={'float': lambda x: "{0:5.0f}".format(x)})
-
 class Dynamics():
     def __init__(self, A, B, C=None):
         if C is None:
@@ -257,7 +255,7 @@ def main():
         X = A_d@X + B_d@u
         X_arr[:,i+1] = X
 
-    # plotResults(X_arr,u_arr,t_arr)
+    plotResults(X_arr,u_arr,t_arr)
     animateResults(X_arr, t_arr)
 
 
