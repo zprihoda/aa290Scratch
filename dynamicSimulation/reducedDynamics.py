@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 
 
 class ReducedDynamics():
-    def __init__(self, full_dyn, n_red):
-        Af, Bf = full_dyn.A, full_dyn.B
-        A_red, B_red, C_red = reduceDynamics(full_dyn, n_red)
+    def __init__(self, A, B, C, reduceState, expandState):
+        self.A = A
+        self.B = B
+        self.C = C
 
-        self.A = A_red
-        self.B = B_red
-        self.C = C_red
+        self.reduceState = reduceState
+        self.expandState = expandState
 
 def reduceDynamics(dyn, n_red):
     """
@@ -60,7 +60,11 @@ def reduceDynamics(dyn, n_red):
 
     return A_r, B_r, C_r
 
-def balancedReduction(Af, Bf, Cf, n_red, debug=0):
+def balancedReduction(dyn, n_red, debug=0):
+    Af = dyn.A
+    Bf = dyn.B
+    Cf = dyn.C
+
     # get P and Q (infinite grammians)
     if Cf is None:
         Cf = np.eye(Af.shape[0])
@@ -108,7 +112,14 @@ def balancedReduction(Af, Bf, Cf, n_red, debug=0):
     B_r = T @ Bf
     C_r = Cf @ T_inv
 
-    return A_r, B_r, C_r, T, T_inv
+    # obtain reduce and expand state functionss
+    reduceState = lambda x: T@x
+    expandState = lambda xr: T_inv@xr
+
+    # return reduced dynamics
+    dyn_red = ReducedDynamics(A_r, B_r, C_r, reduceState, expandState)
+
+    return dyn_red
 
 def stabSep(dyn):
     """
@@ -148,10 +159,11 @@ if __name__ == "__main__":
                    np.zeros([n-2,2]),
                    [0,1]])
 
+    # full dynamics
     dyn_f = Dynamics(A,B)
 
     # obtain reduced Dynamics
-    A_r, B_r, C_r, T, T_inv = balancedReduction(dyn_f.A, dyn_f.B, dyn_f.C, n_red=n_r)
+    dyn_r = balancedReduction(dyn_f, n_red=n_r)
 
     # Setup Simulation parameters
     x0 = np.zeros(n)
@@ -165,7 +177,7 @@ if __name__ == "__main__":
     x_arr = np.zeros([n,len(t_arr)])
     x = x0
     for i,t in enumerate(t_arr):
-        dx = A@x
+        dx = dyn_f.A@x
         x = x + dx*dt
         x_arr[:,i] = x
 
@@ -173,10 +185,10 @@ if __name__ == "__main__":
     xr_arr = np.zeros([n,len(t_arr)])
     x = x0
     for i,t in enumerate(t_arr):
-        x_r = T @ x
-        dx_r = A_r@x_r
+        x_r = dyn_r.reduceState(x)
+        dx_r = dyn_r.A@x_r
         x_r = x_r + dx_r*dt
-        x = T_inv @ x_r
+        x = dyn_r.expandState(x_r)
         xr_arr[:,i] = x
 
     # print results
@@ -190,4 +202,3 @@ if __name__ == "__main__":
     plt.title('Full vs Reduced Dynamics')
     plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
     plt.show()
-
