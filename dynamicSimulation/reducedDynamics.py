@@ -60,7 +60,7 @@ def reduceDynamics(dyn, n_red):
 
     return A_r, B_r, C_r
 
-def balancedReduction(Af, Bf, Cf, n_red):
+def balancedReduction(Af, Bf, Cf, n_red, debug=0):
     # get P and Q (infinite grammians)
     if Cf is None:
         Cf = np.eye(Af.shape[0])
@@ -86,12 +86,17 @@ def balancedReduction(Af, Bf, Cf, n_red):
     T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
     T_inv = U @ K @ Sigma_nhalf
 
-    if 1:
+    if debug:
         # test matrices
         tmp1 = T @ P @ T.conj().T
         tmp2 = T_inv.conj().T @ Q @ T_inv
+        print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
 
         plt.plot(lmbda,'.')
+        plt.xlabel('i')
+        plt.ylabel(r'$\sigma_i$')
+        plt.title('Hankel Singular Values')
+        plt.grid()
         plt.show()
 
     # Obtain reduced transform matrices
@@ -128,19 +133,16 @@ if __name__ == "__main__":
 
     # arguments
     n = 10
+    n_r = 5     # reduced
 
-    # #generate positive definite matrix
+    # Generate Dynamics Matrices
     while True:
-        tmp = np.random.rand(n,n)
+        tmp = np.random.randn(n,n)
         A = -np.dot(tmp,tmp.T)  # guaranteed to be n.s.d.
         lmbda = npl.eig(A)[0]
 
         if all(lmbda < 0):  # check that we are n.d.
             break
-
-    # A = np.diag([2]*n) + np.diag([-1]*(n-1),k=1) + np.diag([-1]*(n-1),k=-1)
-    # A[-1,-1] = 1
-    # A = -A
 
     B = np.vstack([[1,0],
                    np.zeros([n-2,2]),
@@ -148,13 +150,14 @@ if __name__ == "__main__":
 
     dyn_f = Dynamics(A,B)
 
-    A_r, B_r, C_r, T, T_inv = balancedReduction(dyn_f.A, dyn_f.B, dyn_f.C, n_red=9)
+    # obtain reduced Dynamics
+    A_r, B_r, C_r, T, T_inv = balancedReduction(dyn_f.A, dyn_f.B, dyn_f.C, n_red=n_r)
 
+    # Setup Simulation parameters
     x0 = np.zeros(n)
-    x0[0] = 5
+    x0[-1] = 5
 
-
-    tf = 10000
+    tf = 100
     dt = 0.01
     t_arr = np.arange(0, tf, dt)
 
@@ -177,10 +180,14 @@ if __name__ == "__main__":
         xr_arr[:,i] = x
 
     # print results
-    print(np.max(np.abs(x_arr-xr_arr)))
+    print('Maximum State Error:', np.max(np.abs(x_arr-xr_arr)))
 
     # plot results
-    plt.plot(x_arr[-1,:])
-    plt.plot(xr_arr[-1,:])
+    plt.plot(t_arr, x_arr[-1,:])
+    plt.plot(t_arr, xr_arr[-1,:])
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.title('Full vs Reduced Dynamics')
+    plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
     plt.show()
 
