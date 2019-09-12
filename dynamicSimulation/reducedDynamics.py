@@ -124,7 +124,7 @@ def stabSep(dyn):
     return A_s, B_s, C_s, V, l
 
 if __name__ == "__main__":
-    from rotatingFE import Dynamics
+    from dynamics import Dynamics
 
     # arguments
     n = 10
