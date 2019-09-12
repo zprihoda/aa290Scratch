@@ -182,21 +182,20 @@ if __name__ == "__main__":
         x_arr[:,i] = x
 
     # simulate reduced dynamics
-    xr_arr = np.zeros([n,len(t_arr)])
-    x = x0
+    x_arr2 = np.zeros([n,len(t_arr)])
+    x_r = dyn_r.reduceState(x0)
     for i,t in enumerate(t_arr):
-        x_r = dyn_r.reduceState(x)
         dx_r = dyn_r.A@x_r
         x_r = x_r + dx_r*dt
         x = dyn_r.expandState(x_r)
-        xr_arr[:,i] = x
+        x_arr2[:,i] = x
 
     # print results
-    print('Maximum State Error:', np.max(np.abs(x_arr-xr_arr)))
+    print('Maximum State Error:', np.max(np.abs(x_arr-x_arr2)))
 
     # plot results
     plt.plot(t_arr, x_arr[-1,:])
-    plt.plot(t_arr, xr_arr[-1,:])
+    plt.plot(t_arr, x_arr2[-1,:])
     plt.xlabel('t')
     plt.ylabel('x')
     plt.title('Full vs Reduced Dynamics')
