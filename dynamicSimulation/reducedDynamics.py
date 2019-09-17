@@ -3,6 +3,8 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import matplotlib.pyplot as plt
 
+from dynamics import Dynamics
+
 
 class ReducedDynamics():
     def __init__(self, A, B, C, reduceState, expandState):
@@ -132,72 +134,152 @@ def stabSep(dyn):
     B_s = V.T @ dyn.B
     C_s = dyn.C @ V
 
-
     min_lmbda = np.min(npl.eigvals(A_s))
     threshold = min_lmbda/1e5
     l = sum(npl.eigvals(A_s) < threshold)    # remove close to unstable elements
 
-    return A_s, B_s, C_s, V, l
+    # stable components
+    A_n = A_s[:l,:l]
+    B_n = B_s[:l,:]
+    C_n = C_s[:,:l]
+
+    # cross terms
+    A_c = A_s[:l,l:]
+
+    # unstable components
+    A_p = A_s[l:,l:]
+    B_p = B_s[l:,:]
+    C_p = C_s[:,l:]
+
+    # obtain stable and unstable dynamic systems
+    dyn_unstable = Dynamics(A_p, B_p, C_p)
+
+    B_tilde = np.hstack([B_n, A_c])
+    dyn_stable = Dynamics(A_n, B_tilde, C_n)
+
+    return dyn_stable, dyn_unstable, V, l
 
 if __name__ == "__main__":
-    from dynamics import Dynamics
 
-    # arguments
-    n = 10
-    n_r = 5     # reduced
+    if 1:   # test balancedReduction method
+        # arguments
+        n = 10
+        n_r = 5     # reduced
 
-    # Generate Dynamics Matrices
-    while True:
-        tmp = np.random.randn(n,n)
-        A = -np.dot(tmp,tmp.T)  # guaranteed to be n.s.d.
-        lmbda = npl.eig(A)[0]
+        # Generate Dynamics Matrices
+        while True:
+            tmp = np.random.randn(n,n)
+            A = -np.dot(tmp,tmp.T)  # guaranteed to be n.s.d.
+            lmbda = npl.eig(A)[0]
 
-        if all(lmbda < 0):  # check that we are n.d.
-            break
+            if all(lmbda < 0):  # check that we are n.d.
+                break
 
-    B = np.vstack([[1,0],
+        B = np.vstack([[1,0],
+                       np.zeros([n-2,2]),
+                       [0,1]])
+
+        # full dynamics
+        dyn_f = Dynamics(A,B)
+
+        # obtain reduced Dynamics
+        dyn_r = balancedReduction(dyn_f, n_red=n_r)
+
+        # Setup Simulation parameters
+        x0 = np.zeros(n)
+        x0[-1] = 5
+
+        tf = 100
+        dt = 0.01
+        t_arr = np.arange(0, tf, dt)
+
+        # simulate full dynamics
+        x_arr = np.zeros([n,len(t_arr)])
+        x = x0
+        for i,t in enumerate(t_arr):
+            dx = dyn_f.A@x
+            x = x + dx*dt
+            x_arr[:,i] = x
+
+        # simulate reduced dynamics
+        x_arr2 = np.zeros([n,len(t_arr)])
+        x_r = dyn_r.reduceState(x0)
+        for i,t in enumerate(t_arr):
+            dx_r = dyn_r.A@x_r
+            x_r = x_r + dx_r*dt
+            x = dyn_r.expandState(x_r)
+            x_arr2[:,i] = x
+
+        # print results
+        print('Maximum State Error:', np.max(np.abs(x_arr-x_arr2)))
+
+        # plot results
+        plt.plot(t_arr, x_arr[-1,:])
+        plt.plot(t_arr, x_arr2[-1,:])
+        plt.xlabel('t')
+        plt.ylabel('x')
+        plt.title('Full vs Reduced Dynamics')
+        plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
+        plt.show()
+
+    if 1:   # test stabSep
+        # arguments
+        n = 10
+        n_unstable = 3
+
+        # Generate Dynamics Matrices
+        while True:
+            A = np.random.randn(n,n)
+            lmbda = npl.eig(A)[0]
+
+            if sum(lmbda >= 0) == n_unstable:
+                break
+
+        B = np.vstack([[1,0],
                    np.zeros([n-2,2]),
                    [0,1]])
+        dyn = Dynamics(A,B)
 
-    # full dynamics
-    dyn_f = Dynamics(A,B)
+        # apply stable/unstable decomposition
+        dyn_stable, dyn_unstable, V, l= stabSep(dyn)
 
-    # obtain reduced Dynamics
-    dyn_r = balancedReduction(dyn_f, n_red=n_r)
+        # Setup Simulation parameters
+        x0 = np.zeros(n)
+        x0[-1] = 5
 
-    # Setup Simulation parameters
-    x0 = np.zeros(n)
-    x0[-1] = 5
+        tf = 2
+        dt = 0.01
+        t_arr = np.arange(0, tf, dt)
 
-    tf = 100
-    dt = 0.01
-    t_arr = np.arange(0, tf, dt)
+        # simulate dynamics
+        x_arr = np.zeros([n,len(t_arr)])
+        x = x0
+        for i,t in enumerate(t_arr):
+            dx = dyn.A@x
+            x = x + dx*dt
+            x_arr[:,i] = x
 
-    # simulate full dynamics
-    x_arr = np.zeros([n,len(t_arr)])
-    x = x0
-    for i,t in enumerate(t_arr):
-        dx = dyn_f.A@x
-        x = x + dx*dt
-        x_arr[:,i] = x
+        # simulate decomposed dynamics
+        x_arr2 = np.zeros([n,len(t_arr)])
+        x = V.T @ x0
+        x_n = x[:l]
+        x_p = x[l:]
+        for i,t in enumerate(t_arr):
+            u_tilde = np.hstack([np.zeros(2), x_p])
+            dx_n = dyn_stable.A @ x_n + dyn_stable.B @ u_tilde
+            dx_p = dyn_unstable.A @ x_p
 
-    # simulate reduced dynamics
-    x_arr2 = np.zeros([n,len(t_arr)])
-    x_r = dyn_r.reduceState(x0)
-    for i,t in enumerate(t_arr):
-        dx_r = dyn_r.A@x_r
-        x_r = x_r + dx_r*dt
-        x = dyn_r.expandState(x_r)
-        x_arr2[:,i] = x
+            x_n = x_n + dx_n*dt
+            x_p = x_p + dx_p*dt
 
-    # print results
-    print('Maximum State Error:', np.max(np.abs(x_arr-x_arr2)))
+            x = V @ np.hstack([x_n,x_p])
+            x_arr2[:,i] = x
 
-    # plot results
-    plt.plot(t_arr, x_arr[-1,:])
-    plt.plot(t_arr, x_arr2[-1,:])
-    plt.xlabel('t')
-    plt.ylabel('x')
-    plt.title('Full vs Reduced Dynamics')
-    plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
-    plt.show()
+
+        plt.plot(t_arr, x_arr[-1,:])
+        plt.plot(t_arr, x_arr2[-1,:])
+        plt.xlabel('t')
+        plt.ylabel('x')
+        plt.title('Test stable/unstable decomposition Dynamics')
+        plt.legend(['Original', 'Decomposed'])
+        plt.show()
