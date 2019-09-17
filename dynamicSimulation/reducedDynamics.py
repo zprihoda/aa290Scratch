@@ -15,7 +15,7 @@ class ReducedDynamics():
         self.reduceState = reduceState
         self.expandState = expandState
 
-def reduceDynamics(dyn, n_red):
+def reduceDynamics(dyn, n_red, debug=0):
     """
     See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
     """
@@ -31,7 +31,7 @@ def reduceDynamics(dyn, n_red):
 
     # apply balanced reduction
     n_tilde = n_red - (n-l)
-    dyn_nr = balancedReduction(dyn_stable, n_tilde)
+    dyn_nr = balancedReduction(dyn_stable, n_tilde, debug=debug)
     l_r = dyn_nr.A.shape[0]
     A_nr = dyn_nr.A
     B_nr = dyn_nr.B[:,:m]
@@ -48,14 +48,26 @@ def reduceDynamics(dyn, n_red):
 
     # TODO: determine transformations functions
     def reduceState(x):
-        pass
+        x_su = V.T @ x
+        x_n = x_su[:l]
+        x_p = x_su[l:]
+        x_nr = dyn_nr.reduceState(x_n)
+        x_r = np.hstack([x_nr, x_p])
 
-    def expandState(x):
-        pass
+        return x_r
+
+    def expandState(x_r):
+        x_nr = x_r[:l_r]
+        x_p = x_r[l_r:]
+        x_n = dyn_nr.expandState(x_nr)
+        x_su = np.hstack([x_n,x_p])
+        x = V @ x_su
+
+        return x
 
     dyn_red = ReducedDynamics(A_r, B_r, C_r, reduceState, expandState)
 
-    return A_r, B_r, C_r
+    return dyn_red
 
 def balancedReduction(dyn, n_red, debug=0):
     Af = dyn.A
@@ -297,5 +309,39 @@ if __name__ == "__main__":
                    np.zeros([n-2,2]),
                    [0,1]])
 
-        dyn = Dynamics(A,B)
-        dyn_r = reduceDynamics(dyn, n_r)
+        dyn_f = Dynamics(A,B)
+        dyn_r = reduceDynamics(dyn_f, n_r, debug=0)
+
+        # Setup Simulation parameters
+        x0 = np.zeros(n)
+        x0[-1] = 5
+
+        tf = 2
+        dt = 0.01
+        t_arr = np.arange(0, tf, dt)
+
+        # simulate full dynamics
+        x_arr = np.zeros([n,len(t_arr)])
+        x = x0
+        for i,t in enumerate(t_arr):
+            dx = dyn_f.A@x
+            x = x + dx*dt
+            x_arr[:,i] = x
+
+        # simulate reduced dynamics
+        x_arr2 = np.zeros([n,len(t_arr)])
+        x_r = dyn_r.reduceState(x0)
+        for i,t in enumerate(t_arr):
+            dx_r = dyn_r.A@x_r
+            x_r = x_r + dx_r*dt
+            x = dyn_r.expandState(x_r)
+            x_arr2[:,i] = x
+
+        # plot results
+        plt.plot(t_arr, x_arr[-1,:])
+        plt.plot(t_arr, x_arr2[-1,:])
+        plt.xlabel('t')
+        plt.ylabel('x')
+        plt.title('Full vs Reduced Dynamics')
+        plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
+        plt.show()
