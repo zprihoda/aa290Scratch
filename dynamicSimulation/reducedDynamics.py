@@ -24,41 +24,36 @@ def reduceDynamics(dyn, n_red):
     m = dyn.B.shape[1]
 
     # stable/unstable seperation
-    A_s, B_s, C_s, V, l = stabSep(dyn)
-
-    A_n = A_s[:l,:l]
-    A_c = A_s[:l,l:]
-    A_p = A_s[l:,l:]
-
-    B_n = B_s[:l,:]
-    B_p = B_s[l:,:]
-
-    C_n = C_s[:,:l]
-    C_p = C_s[:,l:]
-
-    # Form new seperated system:
-    # dX_n = A_n @ x_n + B_tilde @ u_tilde
-    # y = C_n @ X_n + D_tilde @ u_tilde
-    B_tilde = np.hstack([B_n, A_c])
-    n_tilde = n_red - (n-l)
+    dyn_stable, dyn_unstable, V, l = stabSep(dyn)
+    A_p = dyn_unstable.A
+    B_p = dyn_unstable.B
+    C_p = dyn_unstable.C
 
     # apply balanced reduction
-    A_nr, B_tilde_r, C_nr = balancedReduction(A_n, B_tilde, C_n, n_tilde)
-    l_r = A_nr.shape[0]
-    B_nr = B_tilde_r[:,:m]
-    A_cr = B_tilde_r[:,m:]
+    n_tilde = n_red - (n-l)
+    dyn_nr = balancedReduction(dyn_stable, n_tilde)
+    l_r = dyn_nr.A.shape[0]
+    A_nr = dyn_nr.A
+    B_nr = dyn_nr.B[:,:m]
+    C_nr = dyn_nr.C
+    A_cr = dyn_nr.B[:,m:]
 
     # recombine system
     A_r = np.vstack([
         np.hstack([A_nr, A_cr]),
-        np.hstack([np.zeros([n-l,l_r]),A_p])
+        np.hstack([np.zeros([n-l,l_r]), A_p])
         ])
     B_r = np.vstack([B_nr, B_p])
-    C_r = np.hstack([C_nr,C_p])
+    C_r = np.hstack([C_nr, C_p])
 
-    # TODO: determine what transformations needed for x_nr and x_p terms
-    #   May include both the reduction similarity transform and the stabSep transforms...
-    #   be very careful, maybe check with Joe...
+    # TODO: determine transformations functions
+    def reduceState(x):
+        pass
+
+    def expandState(x):
+        pass
+
+    dyn_red = ReducedDynamics(A_r, B_r, C_r, reduceState, expandState)
 
     return A_r, B_r, C_r
 
@@ -161,7 +156,7 @@ def stabSep(dyn):
 
 if __name__ == "__main__":
 
-    if 1:   # test balancedReduction method
+    if 0:   # test balancedReduction method
         # arguments
         n = 10
         n_r = 5     # reduced
@@ -222,7 +217,7 @@ if __name__ == "__main__":
         plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
         plt.show()
 
-    if 1:   # test stabSep
+    if 0:   # test stabSep
         # arguments
         n = 10
         n_unstable = 3
@@ -283,3 +278,24 @@ if __name__ == "__main__":
         plt.title('Test stable/unstable decomposition Dynamics')
         plt.legend(['Original', 'Decomposed'])
         plt.show()
+
+    if 1:   # test reduce Dynamics
+        # arguments
+        n = 10
+        n_unstable = 3
+        n_r = 8
+
+        # Generate Dynamics Matrices
+        while True:
+            A = np.random.randn(n,n)
+            lmbda = npl.eig(A)[0]
+
+            if sum(lmbda >= 0) == n_unstable:
+                break
+
+        B = np.vstack([[1,0],
+                   np.zeros([n-2,2]),
+                   [0,1]])
+
+        dyn = Dynamics(A,B)
+        dyn_r = reduceDynamics(dyn, n_r)
