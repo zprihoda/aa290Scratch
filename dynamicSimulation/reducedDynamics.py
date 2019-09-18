@@ -3,7 +3,7 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import matplotlib.pyplot as plt
 
-from dynamics import Dynamics
+from dynamics import Dynamics, DiscreteDynamics
 
 
 class ReducedDynamics():
@@ -14,6 +14,23 @@ class ReducedDynamics():
 
         self.reduceState = reduceState
         self.expandState = expandState
+
+    def discretizeDynamics(self,dt):
+
+        A = self.A
+        B = self.B
+
+        t_arr = np.linspace(0,1,10)*dt
+        y_arr = np.array([spl.expm(t*A) for t in t_arr])
+        tmp = np.sum(y_arr,axis=0)*(t_arr[1]-t_arr[0])
+
+        A_d = spl.expm(A*dt)
+        B_d = np.dot(tmp,B)
+
+        dyn_d = DiscreteDynamics(A_d,B_d,self.C)
+        dyn_d.reduceState = self.reduceState
+        dyn_d.expandState = self.expandState
+        return dyn_d
 
 def reduceDynamics(dyn, n_red, debug=0):
     """
@@ -100,10 +117,10 @@ def balancedReduction(dyn, n_red, debug=0):
     T_inv = U @ K @ Sigma_nhalf
 
     if debug:
-        # test matrices
-        tmp1 = T @ P @ T.conj().T
-        tmp2 = T_inv.conj().T @ Q @ T_inv
-        print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
+        # # test matrices
+        # tmp1 = T @ P @ T.conj().T
+        # tmp2 = T_inv.conj().T @ Q @ T_inv
+        # print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
 
         plt.plot(lmbda,'.')
         plt.xlabel('i')
