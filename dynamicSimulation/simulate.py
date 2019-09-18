@@ -82,7 +82,8 @@ def main():
 
 
     # plot results
-    pt.plotHubAngle(x_arr, u_arr, t_arr)
+    pt.plotResults(x_arr, u_arr, t_arr)
+    pt.animateResults(x_arr, t_arr)
 
 
 if __name__ == "__main__":
