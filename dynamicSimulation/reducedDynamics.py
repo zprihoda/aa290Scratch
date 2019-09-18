@@ -3,110 +3,132 @@ import numpy.linalg as npl
 import scipy.linalg as spl
 import matplotlib.pyplot as plt
 
-import rotatingFE
+from dynamics import Dynamics
+
 
 class ReducedDynamics():
-    def __init__(self, full_dyn, n_red):
-        Af, Bf = full_dyn.A, full_dyn.B
-        A_red, B_red, C_red = self.reduceDynamics(full_dyn, n_red)
+    def __init__(self, A, B, C, reduceState, expandState):
+        self.A = A
+        self.B = B
+        self.C = C
 
-        self.A = A_red
-        self.B = B_red
-        self.C = C_red
+        self.reduceState = reduceState
+        self.expandState = expandState
 
-    def reduceDynamics(self, dyn, n_red, Cf=None):
-        """
-        See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
-        """
+def reduceDynamics(dyn, n_red, debug=0):
+    """
+    See pages 78 and 209-211 of Approximation of Large-Scale Dynamical Systems by Antoulas
+    """
 
-        n = dyn.A.shape[0]
-        m = dyn.B.shape[1]
+    n = dyn.A.shape[0]
+    m = dyn.B.shape[1]
 
-        # stable/unstable seperation
-        A_s, B_s, C_s, V, l = stabSep(dyn)
+    # stable/unstable seperation
+    dyn_stable, dyn_unstable, V, l = stabSep(dyn)
+    A_p = dyn_unstable.A
+    B_p = dyn_unstable.B
+    C_p = dyn_unstable.C
 
-        A_n = A_s[:l,:l]
-        A_c = A_s[:l,l:]
-        A_p = A_s[l:,l:]
+    # apply balanced reduction
+    n_tilde = n_red - (n-l)
+    dyn_nr = balancedReduction(dyn_stable, n_tilde, debug=debug)
+    l_r = dyn_nr.A.shape[0]
+    A_nr = dyn_nr.A
+    B_nr = dyn_nr.B[:,:m]
+    C_nr = dyn_nr.C
+    A_cr = dyn_nr.B[:,m:]
 
-        B_n = B_s[:l,:]
-        B_p = B_s[l:,:]
+    # recombine system
+    A_r = np.vstack([
+        np.hstack([A_nr, A_cr]),
+        np.hstack([np.zeros([n-l,l_r]), A_p])
+        ])
+    B_r = np.vstack([B_nr, B_p])
+    C_r = np.hstack([C_nr, C_p])
 
-        C_n = C_s[:,:l]
-        C_p = C_s[:,l:]
+    # TODO: determine transformations functions
+    def reduceState(x):
+        x_su = V.T @ x
+        x_n = x_su[:l]
+        x_p = x_su[l:]
+        x_nr = dyn_nr.reduceState(x_n)
+        x_r = np.hstack([x_nr, x_p])
 
-        # Form new seperated system:
-        # dX_n = A_n @ x_n + B_tilde @ u_tilde
-        # y = C_n @ X_n + D_tilde @ u_tilde
-        B_tilde = np.hstack([B_n, A_c])
-        n_tilde = n_red - (n-l)
+        return x_r
 
-        # apply balanced reduction
-        A_nr, B_tilde_r, C_nr = self.balancedReduction(A_n, B_tilde, C_n, n_tilde)
-        l_r = A_nr.shape[0]
-        B_nr = B_tilde_r[:,:m]
-        A_cr = B_tilde_r[:,m:]
+    def expandState(x_r):
+        x_nr = x_r[:l_r]
+        x_p = x_r[l_r:]
+        x_n = dyn_nr.expandState(x_nr)
+        x_su = np.hstack([x_n,x_p])
+        x = V @ x_su
 
-        # recombine system
-        A_r = np.vstack([
-            np.hstack([A_nr, A_cr]),
-            np.hstack([np.zeros([n-l,l_r]),A_p])
-            ])
-        B_r = np.vstack([B_nr, B_p])
-        C_r = np.hstack([C_nr,C_p])
+        return x
 
-        # TODO: determine what transformations needed for x_nr and x_p terms
-        #   May include both the reduction similarity transform and the stabSep transforms...
-        #   be very careful, maybe check with Joe...
+    dyn_red = ReducedDynamics(A_r, B_r, C_r, reduceState, expandState)
 
-        return A_r, B_r, C_r
+    return dyn_red
 
+def balancedReduction(dyn, n_red, debug=0):
+    Af = dyn.A
+    Bf = dyn.B
+    Cf = dyn.C
 
-    def balancedReduction(self,Af, Bf, Cf, n_red):
-        # get P and Q (infinite grammians)
-        if Cf is None:
-            Cf = np.eye(Af.shape[0])
+    # get P and Q (infinite grammians)
+    if Cf is None:
+        Cf = np.eye(Af.shape[0])
 
-        P = spl.solve_lyapunov(Af, -Bf @ Bf.conj().T)
-        Q = spl.solve_lyapunov(Af.conj().T, -Cf.conj().T @ Cf)
+    P = spl.solve_lyapunov(Af, -Bf @ Bf.conj().T)
+    Q = spl.solve_lyapunov(Af.conj().T, -Cf.conj().T @ Cf)
 
-        # Obtain U, K, Sigma
-        # note: Books wants P = U U^*, scipy returns P = U^* U
-        #    therefore, we want U^* to be upper triangular -> U = lower traingular
-        U = spl.cholesky(P, lower=True)
+    # Obtain U, K, Sigma
+    # note: Books wants P = U U^*, scipy returns P = U^* U
+    #    therefore, we want U^* to be upper triangular -> U = lower traingular
+    U = spl.cholesky(P, lower=True)
 
-        lmbda,K = npl.eig(U.conj().T @ Q @ U)
+    lmbda,K = npl.eig(U.conj().T @ Q @ U)
 
-        idx = lmbda.argsort()[::-1] # sort the eigenvalue outputs
-        lmbda = lmbda[idx]
-        K = K[:,idx]
+    idx = lmbda.argsort()[::-1] # sort the eigenvalue outputs
+    lmbda = lmbda[idx]
+    K = K[:,idx]
 
-        Sigma = np.diag(np.sqrt(lmbda))
-        Sigma_nhalf = np.diag(1/lmbda**(1./4))
+    Sigma = np.diag(np.sqrt(lmbda))
+    Sigma_nhalf = np.diag(1/lmbda**(1./4))
 
-        # Obtain balanced similarity transform matrices
-        T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
-        T_inv = U @ K @ Sigma_nhalf
+    # Obtain balanced similarity transform matrices
+    T = np.sqrt(Sigma) @ K.conj().T @ npl.inv(U)
+    T_inv = U @ K @ Sigma_nhalf
 
-        if 0:
-            # test matrices
-            tmp1 = T @ P @ T.conj().T
-            tmp2 = T_inv.conj().T @ Q @ T_inv
+    if debug:
+        # test matrices
+        tmp1 = T @ P @ T.conj().T
+        tmp2 = T_inv.conj().T @ Q @ T_inv
+        print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
 
-            plt.plot(lmbda,'.')
-            plt.show()
+        plt.plot(lmbda,'.')
+        plt.xlabel('i')
+        plt.ylabel(r'$\sigma_i$')
+        plt.title('Hankel Singular Values')
+        plt.grid()
+        plt.show()
 
-        # Obtain Balanced Matrices
-        A_bal = T @ Af @ T_inv
-        B_bal = T @ Bf
-        C_bal = Cf @ T_inv
+    # Obtain reduced transform matrices
+    T = T[:n_red,:]
+    T_inv = T_inv[:,:n_red]
 
-        # Obtain reduced Matrices
-        A_red = A_bal[:n_red,:n_red]
-        B_red = B_bal[:n_red,:]
-        C_red = C_bal[:,:n_red]
+    # obtain reduced matrices
+    A_r = T @ Af @ T_inv
+    B_r = T @ Bf
+    C_r = Cf @ T_inv
 
-        return A_red, B_red, C_red
+    # obtain reduce and expand state functionss
+    reduceState = lambda x: T@x
+    expandState = lambda xr: T_inv@xr
+
+    # return reduced dynamics
+    dyn_red = ReducedDynamics(A_r, B_r, C_r, reduceState, expandState)
+
+    return dyn_red
 
 def stabSep(dyn):
     """
@@ -119,13 +141,83 @@ def stabSep(dyn):
     B_s = V.T @ dyn.B
     C_s = dyn.C @ V
 
-
     min_lmbda = np.min(npl.eigvals(A_s))
     threshold = min_lmbda/1e5
     l = sum(npl.eigvals(A_s) < threshold)    # remove close to unstable elements
 
-    return A_s, B_s, C_s, V, l
+    # stable components
+    A_n = A_s[:l,:l]
+    B_n = B_s[:l,:]
+    C_n = C_s[:,:l]
+
+    # cross terms
+    A_c = A_s[:l,l:]
+
+    # unstable components
+    A_p = A_s[l:,l:]
+    B_p = B_s[l:,:]
+    C_p = C_s[:,l:]
+
+    # obtain stable and unstable dynamic systems
+    dyn_unstable = Dynamics(A_p, B_p, C_p)
+
+    B_tilde = np.hstack([B_n, A_c])
+    dyn_stable = Dynamics(A_n, B_tilde, C_n)
+
+    return dyn_stable, dyn_unstable, V, l
 
 if __name__ == "__main__":
-    # TODO: Implement Example
-    pass
+
+    # arguments
+    n = 10
+    n_unstable = 3
+    n_r = 8
+
+    # Generate Dynamics Matrices
+    while True:
+        A = np.random.randn(n,n)
+        lmbda = npl.eig(A)[0]
+
+        if sum(lmbda >= 0) == n_unstable:
+            break
+
+    B = np.vstack([[1,0],
+               np.zeros([n-2,2]),
+               [0,1]])
+
+    dyn_f = Dynamics(A,B)
+    dyn_r = reduceDynamics(dyn_f, n_r, debug=0)
+
+    # Setup Simulation parameters
+    x0 = np.zeros(n)
+    x0[-1] = 5
+
+    tf = 2
+    dt = 0.01
+    t_arr = np.arange(0, tf, dt)
+
+    # simulate full dynamics
+    x_arr = np.zeros([n,len(t_arr)])
+    x = x0
+    for i,t in enumerate(t_arr):
+        dx = dyn_f.A@x
+        x = x + dx*dt
+        x_arr[:,i] = x
+
+    # simulate reduced dynamics
+    x_arr2 = np.zeros([n,len(t_arr)])
+    x_r = dyn_r.reduceState(x0)
+    for i,t in enumerate(t_arr):
+        dx_r = dyn_r.A@x_r
+        x_r = x_r + dx_r*dt
+        x = dyn_r.expandState(x_r)
+        x_arr2[:,i] = x
+
+    # plot results
+    plt.plot(t_arr, x_arr[-1,:])
+    plt.plot(t_arr, x_arr2[-1,:])
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.title('Full vs Reduced Dynamics')
+    plt.legend(['Full: n={:}'.format(n), 'Reduced: n={:}'.format(n_r)])
+    plt.show()
