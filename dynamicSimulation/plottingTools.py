@@ -2,11 +2,36 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import numpy as np
 
-def plotHubAngle(X_arr, u_arr, t_arr):
+
+def plotResults(X_arr, u_arr, t_arr):
     # plot hub angle vs time
+    plt.figure()
     plt.plot(t_arr,np.rad2deg(X_arr[0,:-1]))
+    plt.title('Hub Angle vs Time')
     plt.xlabel('t')
     plt.ylabel(r'$\theta$')
+    plt.grid()
+
+    # plot deflection of end point vs time
+    n = len(X_arr)
+    plt.figure()
+    plt.title('Endpoint Deflection vs Time')
+    plt.plot(t_arr,X_arr[n//2-1,:-1])
+    plt.xlabel('t')
+    plt.ylabel('v')
+    plt.grid()
+
+    # plot control vs time
+    plt.figure()
+    plt.title('Endpoint Deflection vs Time')
+    plt.plot(t_arr,u_arr[0,:])
+    plt.plot(t_arr,u_arr[1,:])
+    plt.legend(['Start','end'])
+    plt.xlabel('t')
+    plt.ylabel('u')
+    plt.grid()
+
+
     plt.show()
 
 def animateResults(X_arr, t_arr):
