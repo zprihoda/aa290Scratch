@@ -1,6 +1,7 @@
 import numpy as np
 import plottingTools as pt
 
+from control import Controller
 from FiniteElementModel import LateralFEModel
 from reducedDynamics import reduceDynamics
 
@@ -19,12 +20,16 @@ def main():
     dt_control = 0.1
 
     n_fe = 100
-    n_full = 4*n_fe - 4 + 2  # v,theta + d(v,theta) - bc + hub
     n_red = 10
+
+    n_full = 4*n_fe - 4 + 2  # v,theta + d(v,theta) - bc + hub (do not change)
+
     x0 = np.zeros(n_full)
     x0[-1] = 0.1
     x_des = np.zeros(n_full)
     x_des[0] = np.pi/2      # 90 degree rotation, zero bending
+
+    T = 10  # time horizon for controller (in steps)
 
     # setup matrices
     t_arr = np.arange(0,t_f,dt_dyn)
@@ -39,15 +44,36 @@ def main():
     dyn_r = reduceDynamics(dyn_f, n_red=n_red)
     dyn_dr = dyn_r.discretizeDynamics(dt_control)
 
+    # setup controller
+    controller = Controller(dyn_dr, T, x_des)
+
     # simulate
     print("Running Simulation...")
     x = x0
+    u_traj = None
+    xr_traj = None
+
     for i, t in enumerate(t_arr):
+        print('Progress: {:.2f}%'.format(float(i)/(len(t_arr)-1) * 100), end='\r')
+
         # y = getMeasurement(dyn_f, x)
 
-        # TODO: Implement controller
-        u = np.zeros(2)
+        # determine control
+        j = t % dt_control
+        if j < dt_dyn:  # update control
+            u_ctrl, xr_ctrl = controller.control(x)
+            if u_ctrl is not None:
+                t_ref = t
+                u_traj = u_ctrl
+                xr_traj = xr_ctrl
 
+        if u_traj is not None:
+            idx = int((t-t_ref) // dt_control)
+            u = u_traj[:,idx]
+        else:
+            u = np.zeros(2)
+
+        # simulate dynamics
         x = dynStep(dyn_df, x, u)
 
         # store variables
