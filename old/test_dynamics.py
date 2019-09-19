@@ -30,7 +30,6 @@ def getDeflectionMatrices(n,E,A,L,rho,I):
     dm = m/n
 
     r = 1.5/100
-    I = 1./12 * m * (6*r**2 + dl**2)
 
     K_e = E*I/dl**3 * np.array([
             [   12,    6*dl,   -12,    6*dl],
@@ -85,9 +84,9 @@ def getNaturalFrequencies(K,M,start_idx=0, end_idx=None):
 
 def main():
     # test torsion dynamics
-    E = 350.            # K_lat
+    E = 50.            # K_lat
     G = 100./1000        # K_rot
-    rho = 8000.
+    rho = 1000.
 
     r = 1.5/100
     delta = 1./1000
@@ -97,39 +96,41 @@ def main():
     A = 2*np.pi*r*delta
     m = rho*A*L
 
-    I_xx = 1./12 * m * (6*r**2 + L**2)
     I_zz = m*r**2
 
-    n_list = [5,10,15,20,30,40,50,100,200]
+    n_list = [5,10,15,20,30,40,50,75,100,125,150,175,200]
     wt_arr = []
     wd_arr = []
     for n in n_list:
-        K,C,M = getTorsionMatrices(n,G,A,L,rho,I_zz)
-        wt,vt = getNaturalFrequencies(K,M,start_idx=1)
-        wt_arr.append(wt)
+        dl = L/n
+        I_xx = 1./12 * m * (6*r**2 + L**2)
+
+        # K,C,M = getTorsionMatrices(n,G,A,L,rho,I_zz)
+        # wt,vt = getNaturalFrequencies(K,M,start_idx=1)
+        # wt_arr.append(wt)
 
         K,C,M, = getDeflectionMatrices(n,E,A,L,rho,I_xx)
         wd,vd = getNaturalFrequencies(K,M,start_idx=2)
         wd_arr.append(wd)
 
-    wt_arr = np.array(wt_arr)
-    vt_arr = np.array(vt)
+    # wt_arr = np.array(wt_arr)
+    # vt_arr = np.array(vt)
 
     wd_arr = np.array(wd_arr)
     vd_arr = np.array(vd)[:,::2]
 
-    fig,axes = plt.subplots(2,1)
-    axes[0].plot(np.linspace(0,L,n),vt_arr.T)
-    axes[0].legend(['Mode {}'.format(idx) for idx in np.arange(len(n_list))+1])
-    axes[0].set_xlabel(r'$x/L$')
-    axes[0].set_ylabel(r'$\theta$')
-    axes[0].grid()
-    axes[0].set_title('Torsional Modes and Natural Frequencies')
-    axes[1].semilogy(n_list,wt_arr,'-o')
-    axes[1].set_xlabel(r'$n$')
-    axes[1].set_ylabel(r'$w_n$')
-    axes[1].grid()
-    plt.tight_layout()
+    # fig,axes = plt.subplots(2,1)
+    # axes[0].plot(np.linspace(0,L,n),vt_arr.T)
+    # axes[0].legend(['Mode {}'.format(idx) for idx in np.arange(len(n_list))+1])
+    # axes[0].set_xlabel(r'$x/L$')
+    # axes[0].set_ylabel(r'$\theta$')
+    # axes[0].grid()
+    # axes[0].set_title('Torsional Modes and Natural Frequencies')
+    # axes[1].semilogy(n_list,wt_arr,'-o')
+    # axes[1].set_xlabel(r'$n$')
+    # axes[1].set_ylabel(r'$w_n$')
+    # axes[1].grid()
+    # plt.tight_layout()
 
     fig,axes = plt.subplots(2,1)
     axes[0].plot(np.linspace(0,L,n),vd_arr.T)
@@ -143,6 +144,8 @@ def main():
     axes[1].set_ylabel(r'$w_n$')
     axes[1].grid()
     plt.tight_layout()
+
+    print('Theoretical Wn = ', 1.875**2 * np.sqrt(E*I_xx/(rho*A*L**4)))
 
     plt.show()
 
