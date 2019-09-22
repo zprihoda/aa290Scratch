@@ -12,6 +12,9 @@ def plotResults(X_arr, u_arr, t_arr):
     plt.ylabel(r'$\theta$')
     plt.grid()
 
+    plt.savefig('plots/HubAngle.png')
+    plt.close()
+
     # plot deflection of end point vs time
     n = len(X_arr)
     plt.figure()
@@ -20,6 +23,9 @@ def plotResults(X_arr, u_arr, t_arr):
     plt.xlabel('t')
     plt.ylabel('v')
     plt.grid()
+
+    plt.savefig('plots/EndPointDef.png')
+    plt.close()
 
     # plot control vs time
     plt.figure()
@@ -31,8 +37,10 @@ def plotResults(X_arr, u_arr, t_arr):
     plt.ylabel('u')
     plt.grid()
 
+    plt.savefig('plots/Control.png')
+    plt.close()
 
-    plt.show()
+    # plt.show()
 
 def animateResults(X_arr, t_arr):
 
@@ -83,5 +91,41 @@ def animateResults(X_arr, t_arr):
 
     # generate animation
     anim = ani.FuncAnimation(fig, animate, frames=np.arange(0,len(t_arr),2), interval=20)
-    plt.show()
+    anim.save("plots/full.mp4")
+    # plt.show()
 
+def animateBending(X_arr, t_arr):
+
+    # obtain deflection from state
+    n = (len(X_arr[:,0])-2)//4
+    v_arr = X_arr[1:2*n:2,:]   # deflection at each element at each time
+    theta_arr = X_arr[0,:]  # hub angle at each time
+    u = np.linspace(0, 1, n+1)
+
+    y_arr = np.zeros([len(u),len(t_arr)])
+    for i in range(len(t_arr)):
+        v = np.hstack([0,v_arr[:,i]])
+        y_arr[:,i] = -v
+
+    # plot stuff
+    fig, ax = plt.subplots()
+
+    y_max = np.max(y_arr)
+    y_min = np.min(y_arr)
+
+    c = (y_max + y_min) / 2
+    d = 1.1 * (y_max - y_min) / 2
+
+    # initialize plot
+    line = ax.plot([],[],'b.-')[0]
+    ax.set(xlim=[0, 1],ylim=[c-d, c+d])
+
+    def animate(i):
+        x = u
+        y = y_arr[:,i]
+        line.set_xdata(x)
+        line.set_ydata(y)
+
+    # generate animation
+    anim = ani.FuncAnimation(fig, animate, frames=np.arange(0,len(t_arr),2), interval=20)
+    anim.save("plots/bending.mp4")
