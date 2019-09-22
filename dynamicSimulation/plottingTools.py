@@ -82,6 +82,9 @@ def animateResults(X_arr, t_arr):
     # initialize plot
     line = ax.plot([],[],'b.-')[0]
     ax.set(xlim=[c-d, c+d],ylim=[c-d, c+d])
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_title("Arm State")
 
     def animate(i):
         x = x_arr[:,i]
@@ -119,6 +122,9 @@ def animateBending(X_arr, t_arr):
     # initialize plot
     line = ax.plot([],[],'b.-')[0]
     ax.set(xlim=[0, 1],ylim=[c-d, c+d])
+    ax.set_xlabel('u')
+    ax.set_ylabel('v')
+    ax.set_title("Arm Deflection")
 
     def animate(i):
         x = u
