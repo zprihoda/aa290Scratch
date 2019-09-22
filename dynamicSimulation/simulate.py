@@ -88,8 +88,10 @@ def main():
 
 
     # plot results
+    print("Plotting and Saving Results...")
     pt.plotResults(x_arr, u_arr, t_arr)
     pt.animateResults(x_arr, t_arr)
+    pt.animateBending(x_arr, t_arr)
 
 
 if __name__ == "__main__":
