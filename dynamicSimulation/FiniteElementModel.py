@@ -13,7 +13,7 @@ from reducedDynamics import *
 from dynamics import Dynamics
 
 class LateralFEModel():
-    def __init__(self, n, L, C_ratio=0, bc_start=2, bc_end=0):
+    def __init__(self, n, L, C_ratio=0, bc_start=2, bc_end=0, m_obj=None, I_obj=None):
         self.n = n
         self.L = L
         self.l = float(L)/n
@@ -29,13 +29,18 @@ class LateralFEModel():
         self.M_tot = np.zeros([2*n+1,2*n+1])
         self.K_tot = np.zeros([2*n+1,2*n+1])
         self.compileSystemMatrices()
+        if m_obj is not None and I_obj is not None:
+            M_obj = np.diag(np.hstack([I_obj+m_obj*L**2, np.zeros(2*n-2), m_obj, I_obj]))
+            self.M_tot += M_obj
+        self.applyBoundaryConditions()
         self.C_tot = C_ratio * self.K_tot
+
 
         self.A, self.B = self.compileAB()
 
     @classmethod
-    def getDynamics(cls, n, L, C_ratio=0, bc_start=2, bc_end=0):
-        mdl = LateralFEModel(n, L, C_ratio=C_ratio, bc_start=2, bc_end=0)
+    def getDynamics(cls, n, L, C_ratio=0, bc_start=2, bc_end=0, m_obj=None, I_obj=None):
+        mdl = LateralFEModel(n, L, C_ratio=C_ratio, bc_start=bc_start, bc_end=bc_end, m_obj=m_obj, I_obj=I_obj)
         dyn = Dynamics(mdl.A, mdl.B)
         return dyn
 
@@ -57,6 +62,7 @@ class LateralFEModel():
 
             self.K_tot[start:stop,start:stop] += K_e
 
+    def applyBoundaryConditions(self):
         # Apply boundary conditions
         idx = list(range(2*self.n+1))
         idx_rm = []
