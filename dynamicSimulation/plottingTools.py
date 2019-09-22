@@ -23,7 +23,7 @@ def plotResults(X_arr, u_arr, t_arr):
 
     # plot control vs time
     plt.figure()
-    plt.title('Endpoint Deflection vs Time')
+    plt.title('Control Input vs Time')
     plt.plot(t_arr,u_arr[0,:])
     plt.plot(t_arr,u_arr[1,:])
     plt.legend(['Start','end'])
