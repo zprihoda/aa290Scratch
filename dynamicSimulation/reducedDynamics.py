@@ -47,9 +47,16 @@ def reduceDynamics(dyn, n_red, debug=0):
     C_p = dyn_unstable.C
 
     # apply balanced reduction
-    n_tilde = n_red - (n-l)
+    if l >= n_red:
+        print("Warning: Number of unstable modes is greater than n_red.",
+              "Reducing number of stable modes to n_red instead")
+        n_tilde = n_red
+    else:
+        n_tilde = n_red - (n-l)
+
     dyn_nr = balancedReduction(dyn_stable, n_tilde, debug=debug)
     l_r = dyn_nr.A.shape[0]
+
     A_nr = dyn_nr.A
     B_nr = dyn_nr.B[:,:m]
     C_nr = dyn_nr.C
@@ -122,7 +129,7 @@ def balancedReduction(dyn, n_red, debug=0):
         # tmp2 = T_inv.conj().T @ Q @ T_inv
         # print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
 
-        plt.plot(lmbda,'.')
+        plt.semilogy(np.sqrt(lmbda),'.')
         plt.xlabel('i')
         plt.ylabel(r'$\sigma_i$')
         plt.title('Hankel Singular Values')
@@ -147,7 +154,7 @@ def balancedReduction(dyn, n_red, debug=0):
 
     return dyn_red
 
-def stabSep(dyn):
+def stabSep(dyn, rel_offset=1e-4):
     """
     See [1] for implementation details
     References:
@@ -158,9 +165,10 @@ def stabSep(dyn):
     B_s = V.T @ dyn.B
     C_s = dyn.C @ V
 
-    min_lmbda = np.min(npl.eigvals(A_s))
-    threshold = min_lmbda/1e5
-    l = sum(npl.eigvals(A_s) < threshold)    # remove close to unstable elements
+    if rel_offset is not None:
+        max_lmbda = np.max(abs(npl.eigvals(A_s)))
+        threshold = -max_lmbda*rel_offset
+        l = sum(npl.eigvals(A_s) < threshold)    # remove close to unstable elements
 
     # stable components
     A_n = A_s[:l,:l]
