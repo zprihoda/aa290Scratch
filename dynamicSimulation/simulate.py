@@ -15,12 +15,12 @@ def getMeasurement(dyn, x):
 
 def main():
     # simulation parameters
-    t_f = 10.0
+    t_f = 30.0
     dt_dyn = 0.01
     dt_control = 0.1
 
     n_fe = 100
-    n_red = 10
+    n_red = 50
 
     n_full = 4*n_fe - 4 + 2  # v,theta + d(v,theta) - bc + hub (do not change)
 
@@ -31,6 +31,10 @@ def main():
 
     T = 10  # time horizon for controller (in steps)
 
+    L = 2.0
+    m_obj = 1  # kg
+    I_obj = 1/6 * m_obj * 0.5**2    # cube with sides of length 0.5 m
+
     # setup matrices
     t_arr = np.arange(0,t_f,dt_dyn)
     x_arr = np.zeros([n_full,len(t_arr)+1])
@@ -39,9 +43,10 @@ def main():
 
     # setup dynamics (and discretize them for the simulation)
     print("Compiling Dynamic Matrices...")
-    dyn_f = LateralFEModel.getDynamics(n=n_fe, L=0.9, C_ratio=1e-4)
+    # dyn_f = LateralFEModel.getDynamics(n=n_fe, L=L, C_ratio=1e-4)
+    dyn_f = LateralFEModel.getDynamics(n=n_fe, L=L, C_ratio=1e-4, m_obj=m_obj, I_obj=I_obj)
     dyn_df = dyn_f.discretizeDynamics(dt_dyn)
-    dyn_r = reduceDynamics(dyn_f, n_red=n_red)
+    dyn_r = reduceDynamics(dyn_f, n_red=n_red, debug=0)
     dyn_dr = dyn_r.discretizeDynamics(dt_control)
 
     # setup controller
@@ -53,14 +58,15 @@ def main():
     u_traj = None
     xr_traj = None
 
+    control_cycle = int(np.ceil(dt_control/dt_dyn))
+
     for i, t in enumerate(t_arr):
         print('Progress: {:.2f}%'.format(float(i)/(len(t_arr)-1) * 100), end='\r')
 
         # y = getMeasurement(dyn_f, x)
 
         # determine control
-        j = t % dt_control
-        if j < dt_dyn:  # update control
+        if i % control_cycle == 0:  # update control
             u_ctrl, xr_ctrl = controller.control(x)
             if u_ctrl is not None:
                 t_ref = t

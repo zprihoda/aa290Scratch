@@ -14,8 +14,8 @@ class Controller():
         self.u = cp.Variable([m,T-1])
 
         # objective function
-        g_c = 1     # control
-        g_f = 5     # final
+        g_c = 0     # control
+        g_f = 1     # final
 
         xr_des = dyn.reduceState(x_des)
 
@@ -24,7 +24,7 @@ class Controller():
         self.obj = cp.Minimize(g_c*J_c + g_f*J_f)
 
         # constraints
-        u_max = 1e-2
+        u_max = 1.0
         self.constr = []
         self.constr += [self.z[:,1:] == dyn.A @ self.z[:,:-1] + dyn.B @ self.u]     # FE dynamics
         self.constr += [cp.abs(self.u) <= u_max]                          # control limits
