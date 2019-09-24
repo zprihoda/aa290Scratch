@@ -15,7 +15,7 @@ def getMeasurement(dyn, x):
 
 def main():
     # simulation parameters
-    t_f = 30.0
+    t_f = 15.0
     dt_dyn = 0.01
     dt_control = 0.1
 
