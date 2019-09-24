@@ -84,7 +84,7 @@ def getNaturalFrequencies(K,M,start_idx=0, end_idx=None):
 
 def main():
     # test torsion dynamics
-    E = 50.            # K_lat
+    E = 1000          # K_lat
     G = 100./1000        # K_rot
     rho = 1000.
 
@@ -139,9 +139,9 @@ def main():
     axes[0].set_ylabel(r'$u$')
     axes[0].grid()
     axes[0].set_title('Deflection Modes and Natural Frequencies')
-    axes[1].semilogy(n_list,wd_arr,'-o')
+    axes[1].semilogy(n_list,wd_arr*1/(2*np.pi),'-o')
     axes[1].set_xlabel(r'$n$')
-    axes[1].set_ylabel(r'$w_n$')
+    axes[1].set_ylabel(r'$f_n$ (Hz)')
     axes[1].grid()
     plt.tight_layout()
 
