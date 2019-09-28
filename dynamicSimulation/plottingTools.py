@@ -29,9 +29,9 @@ def plotResults(X_arr, u_arr, t_arr):
     # plot x,y vs time
     plt.figure()
     plt.plot(t_arr,x_arr,'b-')
-    plt.plot(t_arr,y_arr,'o-')
+    plt.plot(t_arr,y_arr,'r-')
     plt.plot([t_arr[0],t_arr[-1]], [0,0],'b--')
-    plt.plot([t_arr[0],t_arr[-1]], [2,2],'o--')
+    plt.plot([t_arr[0],t_arr[-1]], [2,2],'r--')
     plt.title('Payload Position vs Time')
     plt.xlabel('t (s)')
     plt.ylabel('position (m)')
