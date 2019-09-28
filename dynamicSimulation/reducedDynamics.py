@@ -129,7 +129,9 @@ def balancedReduction(dyn, n_red, debug=0):
         # tmp2 = T_inv.conj().T @ Q @ T_inv
         # print("Maxmimum Matrix Error: ",np.max(np.abs(tmp1-tmp2)))
 
-        plt.semilogy(np.sqrt(lmbda),'.')
+        plt.semilogy(lmbda**(1./4),'.')
+        plt.axvline(x=50)
+
         plt.xlabel('i')
         plt.ylabel(r'$\sigma_i$')
         plt.title('Hankel Singular Values')
